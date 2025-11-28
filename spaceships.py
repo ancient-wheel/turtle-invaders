@@ -8,4 +8,12 @@ class SpaceShip(t.Turtle):
         self.left(90)
         self.color("green")
         self.teleport(0, -330)
+
+class Invader(t.Turtle):
+    def __init__(self, x, y) -> None:
+        super().__init__()
+        self.penup()
+        self.shape("turtle")
+        self.right(90)
+        self.color("red")
         
