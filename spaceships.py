@@ -20,12 +20,12 @@ class Invader(t.Turtle):
         self.penup()
         self.shape("turtle")
         self.right(90)
-        self.color("red")
+        self.color("blue")
         self.teleport(x, y)
         self.radius = 5
     
     def shoot(self) -> Bullet:
-        return Bullet(self.xcor(), self.ycor(), S, "red")
+        return Bullet(self.xcor(), self.ycor(), S, self.color()[0])
 
     def damage(self) -> None:
         self.hideturtle()
