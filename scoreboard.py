@@ -58,4 +58,13 @@ class Level(Score):
     def update(self) -> None:
         self.clear()
         self.write(f"LEVEL: {self.value:2}", font=FONT)
+
+class GameOverText(t.Turtle):
+    def __init__(self):
+        super().__init__()
+        self.hideturtle()
+        self.penup()
+        self.color("red")
+        self.teleport(-200, 0)
+        self.write("GAME OVER", font=("Time New Roman", 50, "bold"))
         

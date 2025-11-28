@@ -1,6 +1,6 @@
 import turtle as t
 import logging
-from scoreboard import Score, HighScore, LifeScore, Level
+from scoreboard import Score, HighScore, LifeScore, Level, GameOverText
 from time import sleep, perf_counter
 from spaceships import SpaceShip, Invader, Bullet, N, S
 from collections import deque
@@ -32,15 +32,18 @@ class App():
         self.invaders_last_move = perf_counter()
         self.bullets = []
         self.run = True
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-10), "Left")
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+10), "Right")
+        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15), "Left")
+        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15), "Right")
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()), "space")
         self.screen.onkey(self.stop, "q")
         
     def initialize_invadors(self) -> list[list[Invader]]:
         START_Y = 80
+        START_X = int(SCREEN_WIDTH/2-30)
+        END_X = int(SCREEN_WIDTH/4)
+        ROWS_INVADERS = 7
         return [
-            [ Invader(x, START_Y+i*40) for i in range(7) ] for x in range(-270, 150, 25)
+            [ Invader(x, START_Y+i*40) for i in range(ROWS_INVADERS) ] for x in range(-START_X, END_X, 25)
         ]
         
     def move_invaders(self, sideward_step: int|float=10, forward_step: int|float=10) -> None:
@@ -123,7 +126,7 @@ class App():
     def check_lifes(self,) -> None:
         if self.lifes.value <= 0:
             self.run = False
-        
+            GameOverText()
         
 def main():
     try:
@@ -140,6 +143,7 @@ def main():
             sleep(0.001)
     except KeyboardInterrupt:
         pass
+    sleep(5)
     
 if __name__ == "__main__":
     main()
