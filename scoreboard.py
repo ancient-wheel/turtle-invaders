@@ -26,6 +26,7 @@ class HighScore(Score):
     def __init__(self) -> None:
         super().__init__()
         self.teleport(-40, 350)
+        self.update()
     
     def update(self) -> None:
         self.clear()
