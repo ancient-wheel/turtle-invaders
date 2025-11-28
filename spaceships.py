@@ -1,3 +1,4 @@
+from __future__ import annotations
 import turtle as t
 
 class SpaceShip(t.Turtle):
