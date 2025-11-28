@@ -14,12 +14,13 @@ class SpaceShip(t.Turtle):
         return Bullet(self.xcor(), self.ycor(), N, "green")
 
 class Invader(t.Turtle):
-    def __init__(self, x, y) -> None:
+    def __init__(self, x: int | float, y: int | float) -> None:
         super().__init__()
         self.penup()
         self.shape("turtle")
         self.right(90)
         self.color("red")
+        self.teleport(x, y)
     
     def shoot(self) -> Bullet:
         return Bullet(self.xcor(), self.ycor(), S, "red")
