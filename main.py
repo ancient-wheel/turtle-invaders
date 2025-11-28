@@ -1,9 +1,10 @@
 import turtle as t
 import logging
 from scoreboard import Score, HighScore, LifeScore, Level
-from time import sleep
+from time import sleep, perf_counter
 from spaceships import SpaceShip, Invader, Bullet, N, S
 from collections import deque
+from random import randint
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class App():
         self.user = SpaceShip()
         self.invaders = self.initialize_invadors()
         self.invaders_movement_direction = 1 # values -1 or 1
+        self.invaders_last_shoot = perf_counter() - 30
         self.bullets = deque()
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-10), "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+10), "Right")
@@ -38,7 +40,7 @@ class App():
             [ Invader(x, START_Y+i*40) for i in range(7) ] for x in range(-270, 150, 25)
         ]
         
-    def move_invaders(self, sideward_step: int|float=15, forward_step: int|float=10) -> None:
+    def move_invaders(self, sideward_step: int|float=3, forward_step: int|float=10) -> None:
         direction = self.invaders_movement_direction
         most_right_position = SCREEN_WIDTH/2 - 15
         most_left_position = - SCREEN_WIDTH/2 + 5
@@ -58,8 +60,20 @@ class App():
                 [item.teleport(item.xcor(), item.ycor()-forward_step) for item in column] for column in self.invaders
             ]
             
-    # def invaders_shoot(self) -> None:
-        
+    def invaders_shoot(self) -> None:
+        if perf_counter() - self.invaders_last_shoot > 5:
+            column = randint(0, len(self.invaders)-1)
+            for invader in self.invaders[column][::-1]:
+                if isinstance(invader, Invader):
+                    self.bullets.append(invader.shoot()) 
+                    self.invaders_last_shoot = perf_counter()
+                    return
+    
+    def move_bullets(self) -> None:
+        [
+            bullet.move(10) for bullet in self.bullets
+        ]
+                
         
 def main():
     try:
@@ -72,8 +86,10 @@ def main():
             #     bullet.move(15) for bullet in app.bullets
             # ]
             app.move_invaders()
+            app.invaders_shoot()
+            app.move_bullets()
             app.screen.update()
-            sleep(0.5)
+            sleep(0.1)
     except KeyboardInterrupt:
         pass
     
