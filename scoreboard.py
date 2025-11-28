@@ -45,6 +45,10 @@ class LifeScore(Score):
         self.clear()
         self.write(f"{'X'*self.value}", font=FONT)
         
+    def reduce_(self,) -> None:
+        self.value -= 1
+        self.update()
+        
 class Level(Score):
     def __init__(self) -> None:
         super().__init__()
@@ -54,3 +58,4 @@ class Level(Score):
     def update(self) -> None:
         self.clear()
         self.write(f"LEVEL: {self.value:2}", font=FONT)
+        
