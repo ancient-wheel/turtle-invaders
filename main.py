@@ -5,6 +5,7 @@ from time import sleep, perf_counter
 from spaceships import SpaceShip, Invader, Bullet, N, S
 from collections import deque
 from random import randint
+from contextlib import suppress
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -129,10 +130,16 @@ class App():
             GameOverText()
         
 def main():
+    app = App()
+    with suppress(FileNotFoundError):
+        logger.debug("Searching for stored high score")
+        with open("highscore") as f:
+            logger.debug("Reading high score")
+            app.high_score.value = int(f.read())
+            app.high_score.update()
+            logger.debug("Set high score")
     try:
-        app = App()
         while app.run:
-            app.high_score.increase(1)
             app.move_invaders()
             app.invaders_shoot()
             app.move_bullets()
@@ -143,7 +150,12 @@ def main():
             sleep(0.001)
     except KeyboardInterrupt:
         pass
-    sleep(5)
+
+    if app.score.value > app.high_score.value:
+        logger.debug("Score is higher then current high score.")
+        with open("highscore", "w") as f:
+            f.write(str(app.score.value))
+            logger.debug("New high score is stored")
     
 if __name__ == "__main__":
     main()
