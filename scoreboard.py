@@ -18,13 +18,14 @@ class Score(t.Turtle):
         self.clear()
         self.write(f"SCORE: <{self.value:04}>", font=FONT)
 
-    def set(self, value:int) -> None:
-        self.value = value if value > 0 else self.value
+    def increase(self, value: int) -> None:
+        self.value += value
         self.update()
         
 class HighScore(Score):
-    def __init__(self) -> None:
+    def __init__(self, value: int=0) -> None:
         super().__init__()
+        self.value = value
         self.teleport(-40, 350)
         self.update()
     
