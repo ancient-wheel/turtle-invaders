@@ -8,6 +8,9 @@ class SpaceShip(t.Turtle):
         self.left(90)
         self.color("green")
         self.teleport(0, -330)
+        
+    def shoot(self) -> Bullet:
+        return Bullet(self.xcor(), self.ycor(), N, "green")
 
 class Invader(t.Turtle):
     def __init__(self, x, y) -> None:
@@ -16,4 +19,19 @@ class Invader(t.Turtle):
         self.shape("turtle")
         self.right(90)
         self.color("red")
+    
+    def shoot(self) -> Bullet:
+        return Bullet(self.xcor(), self.ycor(), S, "red")
         
+N = 90
+S = 270
+class Bullet(t.Turtle):
+    def __init__(self, x: int, y: int, direction: int, color: str) -> None:
+        super().__init__()
+        self.penup()
+        self.left(direction)
+        self.color(color)
+        self.teleport(x, y)
+        
+    def move(self, step: int | float):
+        self.forward(step)
