@@ -11,7 +11,6 @@ from fortresses import Fortress
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
 SCREEN_LEFT_LIMIT_OBJECTS = - SCREEN_WIDTH / 2 + 5
@@ -39,7 +38,7 @@ class App():
         self.invaders_last_move = perf_counter()
         self.bullets = []
         self.run = True
-        self.fortresses = self.initialize_fortresses(-290)
+        self.fortresses = self.initialize_fortressesV2(-290)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
         self.screen.onkey(self.user_shoot, "space")
@@ -60,6 +59,20 @@ class App():
         return [
             Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
         ]
+        
+    def initialize_fortressesV2(self, y: numeric, number: int=4) -> list[Fortress]:
+        if number < 0:
+            raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
+        distance = int(SCREEN_WIDTH / (number + 1))
+        result = []
+        for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance):
+            result.append(
+                Fortress(x-Fortress.radius, y)
+            )
+            result.append(
+                Fortress(x+Fortress.radius, y)
+            )
+        return result
       
     def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=10) -> None:
         if perf_counter() - self.invaders_last_move < 1:
@@ -157,6 +170,10 @@ class App():
         [
             self.fortresses.pop(i) for i in to_destroy
         ]
+        
+    def check_invaders_won(self) -> bool:
+        
+        return False
     
     def update_level(self) -> None:
         if len(self.invaders) == 0:
