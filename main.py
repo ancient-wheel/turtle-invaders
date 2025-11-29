@@ -41,13 +41,11 @@ class App():
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
         
-    def initialize_invadors(self, start_y_pos: numeric) -> list[list[Invader]]:
-        START_Y = 80
-        START_X = int(SCREEN_WIDTH/2-30)
-        END_X = int(SCREEN_WIDTH/4)
-        ROWS_INVADERS = 7
+    def initialize_invadors(self, start_y_cor: numeric=80, rows: int=7) -> list[list[Invader]]:
+        START_X = int(SCREEN_WIDTH / 2 - 30)
+        END_X = int(SCREEN_WIDTH / 4)
         return [
-            [ Invader(x, START_Y+i*40) for i in range(ROWS_INVADERS) ] for x in range(-START_X, END_X, 25)
+            [ Invader(x, start_y_cor + i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 25)
         ]
         
     def move_invaders(self, sideward_step: numeric=10, forward_step: numeric=10) -> None:
@@ -56,8 +54,8 @@ class App():
         else:
             self.invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
-        most_right_position = SCREEN_WIDTH/2 - 15
-        most_left_position = - SCREEN_WIDTH/2 + 5
+        most_right_position = SCREEN_WIDTH / 2 - 15
+        most_left_position = - SCREEN_WIDTH / 2 + 5
         first_column_to_move = {-1: 0, 1: -1}
         items = self.invaders[first_column_to_move[direction]]
         for i in items:
@@ -95,7 +93,7 @@ class App():
                 for i, bullet in enumerate(self.bullets):
                     if (
                         invader is not None and
-                        (invader.xcor() - bullet.xcor())**2 +(invader.ycor() - bullet.ycor())**2 <= (invader.radius + bullet.radius)**2 and
+                        (invader.xcor() - bullet.xcor())**2 + (invader.ycor() - bullet.ycor())**2 <= (invader.radius + bullet.radius)**2 and
                         invader.heading() != bullet.heading()
                     ):
                         logger.debug("Bullet hit invader (%s, %s)", bullet.xcor(), bullet.ycor())
@@ -106,7 +104,7 @@ class App():
                         self.score.increase(1)
                     if (
                         check_collision_user_first_time and
-                        (self.user.xcor() - bullet.xcor())**2 +(self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
+                        (self.user.xcor() - bullet.xcor())**2 + (self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
                         self.user.heading() != bullet.heading()
                     ):
                         logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
