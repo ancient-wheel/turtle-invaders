@@ -45,11 +45,11 @@ class App():
         self.screen.onkey(self.stop, "q")
     
     ### INITIALIZATION ###
-    def initialize_invaders(self, start_y_cor: numeric=80, rows: int=7) -> list[list[Invader]]:
+    def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> list[list[Invader]]:
         START_X = int(SCREEN_WIDTH / 2 - 30)
         END_X = int(SCREEN_WIDTH / 4)
         return [
-            [ Invader(x, start_y_cor + i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 25)
+            [ Invader(x, start_y_cor - i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 40)
         ]
       
     def initialize_fortresses(self, y: numeric, number: int=4) -> list[Fortress]:
@@ -74,7 +74,7 @@ class App():
             )
         return result
       
-    def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=10) -> None:
+    def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=30) -> None:
         if perf_counter() - self.invaders_last_move < 1:
             return
         self.invaders_last_move = perf_counter()
@@ -107,6 +107,7 @@ class App():
                     self.bullets.append(invader.shoot()) 
                     self.invaders_last_shoot = perf_counter()
                     return
+                
     def user_shoot(self, time_interval: numeric=0.5) -> None:
         if perf_counter() - self.user_last_shoot > time_interval:
             self.bullets.append(self.user.shoot())
@@ -114,6 +115,7 @@ class App():
 
         
     def check_collisions(self) -> None:
+        bullets_to_remove = deque()
         for column, rows in enumerate(self.invaders):
             for row, invader in enumerate(rows):
                 for i, bullet in enumerate(self.bullets):
@@ -125,7 +127,7 @@ class App():
                         logger.debug("Bullet hit invader (%s, %s)", bullet.xcor(), bullet.ycor())
                         invader.damage()
                         bullet.damage()
-                        self.bullets.pop(i)
+                        bullets_to_remove.append(i)
                         self.invaders[column][row] = None
                         self.score.increase(1)
                     if (
@@ -133,6 +135,7 @@ class App():
                         self.user.heading() != bullet.heading()
                     ):
                         logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
+                        bullets_to_remove.append(i)
                         self.lifes.reduce_()
                         self.user_is_hit = True
                         return
@@ -144,7 +147,10 @@ class App():
                     logger.debug("Bullet hit fortress (%s, %s)", bullet.xcor(), bullet.ycor())
                     fortress.hit()
                     bullet.damage()
-                    self.bullets.pop(i)
+                    bullets_to_remove.append(i)
+        bullets = [ bullet for i, bullet in enumerate(self.bullets) if i not in bullets_to_remove ]
+        self.bullets = bullets
+        
                     
     def clear_invader_columns(self):
         columns_to_remove = deque()
@@ -159,7 +165,7 @@ class App():
     def check_lifes(self,) -> None:
         if self.lifes.value <= 0:
             self.run = False
-            GameOverText()
+            self.game_over()
             
     def check_fortresses(self) -> None:
         to_destroy = deque()
@@ -171,8 +177,12 @@ class App():
             self.fortresses.pop(i) for i in to_destroy
         ]
         
-    def check_invaders_won(self) -> bool:
-        
+    def check_invaders_win(self) -> bool:
+        for column in self.invaders:
+            for row in column:
+                if row is not None:
+                    if row.ycor() <= -280:
+                        return True
         return False
     
     def update_level(self) -> None:
@@ -191,8 +201,13 @@ class App():
             ]
             self.bullets = []
 
-    def stop(self,) -> None:
+    def stop(self) -> None:
         self.run = False
+        
+    def game_over(self) -> None:
+        GameOverText()
+        self.screen.update()
+        sleep(7)
         
 def main():
     app = App()
@@ -203,8 +218,8 @@ def main():
             app.high_score.value = int(f.read())
             app.high_score.update()
             logger.debug("Set high score")
-    try:
-        while app.run:
+    while app.run:
+        try:
             app.invaders_shoot()
             app.move_invaders()
             app.move_bullets()
@@ -216,10 +231,14 @@ def main():
             app.check_lifes()
             app.check_fortresses()
             app.update_level()
+            if app.check_invaders_win():
+                app.stop()
+                app.check_invaders_win()
+                app.game_over()
             app.screen.update()
             sleep(0.001)
-    except KeyboardInterrupt:
-        pass
+        except KeyboardInterrupt:
+            app.stop()
 
     if app.score.value > app.high_score.value:
         logger.debug("Score is higher then current high score.")
