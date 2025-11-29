@@ -54,13 +54,11 @@ class App():
     def move_invaders(self, sideward_step: numeric=10, forward_step: numeric=10) -> None:
         if perf_counter() - self.invaders_last_move < 2:
             return
-        else:
-            self.invaders_last_move = perf_counter()
+        self.invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
         first_column_to_move = {-1: 0, 1: -1}
-        items = self.invaders[first_column_to_move[direction]]
-        for i in items:
-            if isinstance(i, Invader):
+        for i in self.invaders[first_column_to_move[direction]]:
+            if i is not None:
                 x = i.xcor()
                 break
         if SCREEN_LEFT_LIMIT_OBJECTS < x + sideward_step*direction < SCREEN_RIGHT_LIMIT_OBJECTS:
@@ -73,21 +71,20 @@ class App():
                 [item.teleport(item.xcor(), item.ycor()-forward_step) for item in column if item is not None] for column in self.invaders
             ]
             
-    def invaders_shoot(self) -> None:
-        if perf_counter() - self.invaders_last_shoot > 2:
+    def invaders_shoot(self, time_interval: int=2) -> None:
+        if perf_counter() - self.invaders_last_shoot > time_interval:
             column = randint(0, len(self.invaders)-1)
             for invader in self.invaders[column][::-1]:
-                if isinstance(invader, Invader):
+                if invader is not None:
                     self.bullets.append(invader.shoot()) 
                     self.invaders_last_shoot = perf_counter()
-                    return
     
     def move_bullets(self) -> None:
         [
             bullet.move(1) for bullet in self.bullets
         ]
         
-    def check_collision(self) -> None:
+    def check_collisions(self) -> None:
         check_collision_user_first_time = True
         for column, rows in enumerate(self.invaders):
             for row, invader in enumerate(rows):
@@ -132,8 +129,14 @@ class App():
             GameOverText()
     
     def update_level(self) -> None:
-        ...
-        # implement action after level complite
+        if len(self.invaders) == 0:
+            [
+                bullet.damage() for bullet in self.bullets
+            ]
+            self.bullets = []
+            self.invaders = self.initialize_invadors()
+            self.level.value += 1
+            self.level.update()
         
 def main():
     app = App()
@@ -149,9 +152,10 @@ def main():
             app.invaders_shoot()
             app.move_invaders()
             app.move_bullets()
-            app.check_collision()
+            app.check_collisions()
             app.clear_invader_columns()
             app.check_lifes()
+            app.update_level()
             app.screen.update()
             sleep(0.001)
     except KeyboardInterrupt:
