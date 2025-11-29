@@ -27,6 +27,7 @@ class App():
         self.lifes = LifeScore()
         self.level = Level()
         self.user = SpaceShip()
+        self.user_last_shoot = perf_counter() - 30
         self.invaders = self.initialize_invadors()
         self.invaders_movement_direction = 1 # values -1 or 1
         self.invaders_last_shoot = perf_counter() - 30
@@ -35,7 +36,7 @@ class App():
         self.run = True
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15), "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15), "Right")
-        self.screen.onkey(lambda: self.bullets.append(self.user.shoot()), "space")
+        self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
         
     def initialize_invadors(self) -> list[list[Invader]]:
@@ -72,7 +73,7 @@ class App():
             ]
             
     def invaders_shoot(self) -> None:
-        if perf_counter() - self.invaders_last_shoot > 3:
+        if perf_counter() - self.invaders_last_shoot > 2:
             column = randint(0, len(self.invaders)-1)
             for invader in self.invaders[column][::-1]:
                 if isinstance(invader, Invader):
@@ -101,16 +102,14 @@ class App():
                         self.bullets.pop(i)
                         self.invaders[column][row] = None
                         self.score.increase(1)
-        # collision with user  
-        for i, bullet in enumerate(self.bullets):
-            if (
-                (self.user.xcor() - bullet.xcor())**2 +(self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
-                self.user.heading() != bullet.heading()
-            ):
-                logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
-                bullet.damage()
-                self.bullets.pop(i)
-                self.lifes.reduce_()
+                    if (
+                        (self.user.xcor() - bullet.xcor())**2 +(self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
+                        self.user.heading() != bullet.heading()
+                    ):
+                        logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
+                        bullet.damage()
+                        self.bullets.pop(i)
+                        self.lifes.reduce_()
         
     def clear_invader_rows(self):
         columns_to_remove = deque()
@@ -128,6 +127,10 @@ class App():
         if self.lifes.value <= 0:
             self.run = False
             GameOverText()
+    
+    def update_level(self) -> None:
+        ...
+        # implement action after level complite
         
 def main():
     app = App()
@@ -140,8 +143,8 @@ def main():
             logger.debug("Set high score")
     try:
         while app.run:
-            app.move_invaders()
             app.invaders_shoot()
+            app.move_invaders()
             app.move_bullets()
             app.check_collision()
             app.clear_invader_rows()
