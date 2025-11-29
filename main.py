@@ -13,6 +13,9 @@ logger.setLevel(logging.DEBUG)
 
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
+SCREEN_LEFT_LIMIT_OBJECTS = - SCREEN_WIDTH / 2 + 5
+SCREEN_RIGHT_LIMIT_OBJECTS = SCREEN_WIDTH / 2 - 15
+
 
 type numeric = int | float
 
@@ -36,8 +39,8 @@ class App():
         self.invaders_last_move = perf_counter()
         self.bullets = []
         self.run = True
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15), "Left")
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15), "Right")
+        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
+        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
         
@@ -54,15 +57,13 @@ class App():
         else:
             self.invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
-        most_right_position = SCREEN_WIDTH / 2 - 15
-        most_left_position = - SCREEN_WIDTH / 2 + 5
         first_column_to_move = {-1: 0, 1: -1}
         items = self.invaders[first_column_to_move[direction]]
         for i in items:
             if isinstance(i, Invader):
                 x = i.xcor()
                 break
-        if most_left_position < x + sideward_step*direction < most_right_position:
+        if SCREEN_LEFT_LIMIT_OBJECTS < x + sideward_step*direction < SCREEN_RIGHT_LIMIT_OBJECTS:
             [
                 [item.teleport(item.xcor()+sideward_step*direction, item.ycor()) for item in column if item is not None] for column in self.invaders
             ]
