@@ -29,7 +29,7 @@ class Invader(t.Turtle):
     def shoot(self) -> Bullet:
         return Bullet(self.xcor(), self.ycor(), S, self.color()[0])
 
-    def damage(self) -> None:
+    def destroy(self) -> None:
         self.hideturtle()
         
 N = 90
@@ -41,10 +41,10 @@ class Bullet(t.Turtle):
         self.left(direction)
         self.color(color)
         self.teleport(x, y)
-        self.radius = 2
+        self.radius = 3
         
     def move(self, step: numeric):
         self.forward(step)
         
-    def damage(self) -> None:
+    def destroy(self) -> None:
         self.hideturtle()
