@@ -111,11 +111,11 @@ class App():
                         self.bullets.pop(i)
                         self.lifes.reduce_()
         
-    def clear_invader_rows(self):
+    def clear_invader_columns(self):
         columns_to_remove = deque()
-        for column, rows in enumerate(self.invaders):
-            if not any(rows):
-                columns_to_remove.append(column)
+        [
+            columns_to_remove.append(column) for column, rows in enumerate(self.invaders) if not any(rows)
+        ]
         [
             self.invaders.pop(i) for i in columns_to_remove
         ]
@@ -147,7 +147,7 @@ def main():
             app.move_invaders()
             app.move_bullets()
             app.check_collision()
-            app.clear_invader_rows()
+            app.clear_invader_columns()
             app.check_lifes()
             app.screen.update()
             sleep(0.001)
