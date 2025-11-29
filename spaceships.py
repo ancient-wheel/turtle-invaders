@@ -1,6 +1,8 @@
 from __future__ import annotations
 import turtle as t
 
+type numeric = int | float
+
 class SpaceShip(t.Turtle):
     def __init__(self) -> None:
         super().__init__()
@@ -15,7 +17,7 @@ class SpaceShip(t.Turtle):
         return Bullet(self.xcor(), self.ycor(), N, "green")
     
 class Invader(t.Turtle):
-    def __init__(self, x: int | float, y: int | float) -> None:
+    def __init__(self, x: numeric, y: numeric) -> None:
         super().__init__()
         self.penup()
         self.shape("turtle")
@@ -33,7 +35,7 @@ class Invader(t.Turtle):
 N = 90
 S = 270
 class Bullet(t.Turtle):
-    def __init__(self, x: int, y: int, direction: int, color: str) -> None:
+    def __init__(self, x: numeric, y: numeric, direction: int, color: str) -> None:
         super().__init__()
         self.penup()
         self.left(direction)
@@ -41,7 +43,7 @@ class Bullet(t.Turtle):
         self.teleport(x, y)
         self.radius = 2
         
-    def move(self, step: int | float):
+    def move(self, step: numeric):
         self.forward(step)
         
     def damage(self) -> None:

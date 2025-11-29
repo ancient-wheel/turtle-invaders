@@ -14,6 +14,8 @@ logger.setLevel(logging.DEBUG)
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
 
+type numeric = int | float
+
 class App():
     def __init__(self):
         self.screen = t.Screen()
@@ -39,7 +41,7 @@ class App():
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
         
-    def initialize_invadors(self) -> list[list[Invader]]:
+    def initialize_invadors(self, start_y_pos: numeric) -> list[list[Invader]]:
         START_Y = 80
         START_X = int(SCREEN_WIDTH/2-30)
         END_X = int(SCREEN_WIDTH/4)
@@ -48,7 +50,7 @@ class App():
             [ Invader(x, START_Y+i*40) for i in range(ROWS_INVADERS) ] for x in range(-START_X, END_X, 25)
         ]
         
-    def move_invaders(self, sideward_step: int|float=10, forward_step: int|float=10) -> None:
+    def move_invaders(self, sideward_step: numeric=10, forward_step: numeric=10) -> None:
         if perf_counter() - self.invaders_last_move < 2:
             return
         else:
