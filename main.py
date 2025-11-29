@@ -15,8 +15,6 @@ SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
 SCREEN_LEFT_LIMIT_OBJECTS = - SCREEN_WIDTH / 2 + 5
 SCREEN_RIGHT_LIMIT_OBJECTS = SCREEN_WIDTH / 2 - 15
-
-
 type numeric = int | float
 
 class App():
@@ -33,7 +31,8 @@ class App():
         self.level = Level()
         self.user = SpaceShip()
         self.user_last_shoot = perf_counter() - 30
-        self.invaders = self.initialize_invadors()
+        self.user_is_hit = False
+        self.invaders = self.initialize_invaders()
         self.invaders_movement_direction = 1 # values -1 or 1
         self.invaders_last_shoot = perf_counter() - 30
         self.invaders_last_move = perf_counter()
@@ -44,7 +43,7 @@ class App():
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
         
-    def initialize_invadors(self, start_y_cor: numeric=80, rows: int=7) -> list[list[Invader]]:
+    def initialize_invaders(self, start_y_cor: numeric=80, rows: int=7) -> list[list[Invader]]:
         START_X = int(SCREEN_WIDTH / 2 - 30)
         END_X = int(SCREEN_WIDTH / 4)
         return [
@@ -78,6 +77,7 @@ class App():
                 if invader is not None:
                     self.bullets.append(invader.shoot()) 
                     self.invaders_last_shoot = perf_counter()
+                    return
     
     def move_bullets(self) -> None:
         [
@@ -85,7 +85,6 @@ class App():
         ]
         
     def check_collisions(self) -> None:
-        check_collision_user_first_time = True
         for column, rows in enumerate(self.invaders):
             for row, invader in enumerate(rows):
                 for i, bullet in enumerate(self.bullets):
@@ -101,15 +100,13 @@ class App():
                         self.invaders[column][row] = None
                         self.score.increase(1)
                     if (
-                        check_collision_user_first_time and
                         (self.user.xcor() - bullet.xcor())**2 + (self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
                         self.user.heading() != bullet.heading()
                     ):
                         logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
-                        bullet.damage()
-                        self.bullets.pop(i)
                         self.lifes.reduce_()
-                check_collision_user_first_time = False
+                        self.user_is_hit = True
+                        return
         
     def clear_invader_columns(self):
         columns_to_remove = deque()
@@ -130,13 +127,19 @@ class App():
     
     def update_level(self) -> None:
         if len(self.invaders) == 0:
+            self.reset_bullets()
+            self.invaders = self.initialize_invaders()
+            self.level.value += 1
+            self.level.update()
+            logger.debug("Updated level")
+            
+    def reset_bullets(self) -> None:
+        if len(self.bullets) > 0:
+            logger.debug("Reset list of bullets")
             [
                 bullet.damage() for bullet in self.bullets
             ]
             self.bullets = []
-            self.invaders = self.initialize_invadors()
-            self.level.value += 1
-            self.level.update()
         
 def main():
     app = App()
@@ -153,6 +156,9 @@ def main():
             app.move_invaders()
             app.move_bullets()
             app.check_collisions()
+            if app.user_is_hit:
+                app.reset_bullets()
+                app.user_is_hit = False
             app.clear_invader_columns()
             app.check_lifes()
             app.update_level()
