@@ -39,10 +39,10 @@ class App():
         self.invaders_last_move = perf_counter()
         self.bullets = []
         self.run = True
-        self.fortresses = self.initialize_fortresses(-300)
+        self.fortresses = self.initialize_fortresses(-290)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
-        self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
+        self.screen.onkey(self.user_shoot, "space")
         self.screen.onkey(self.stop, "q")
     
     ### INITIALIZATION ###
@@ -61,8 +61,8 @@ class App():
             Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
         ]
       
-    def move_invaders(self, sideward_step: numeric=10, forward_step: numeric=10) -> None:
-        if perf_counter() - self.invaders_last_move < 2:
+    def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=10) -> None:
+        if perf_counter() - self.invaders_last_move < 1:
             return
         self.invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
@@ -81,6 +81,11 @@ class App():
                 [item.teleport(item.xcor(), item.ycor()-forward_step) for item in column if item is not None] for column in self.invaders
             ]
             
+    def move_bullets(self) -> None:
+        [
+            bullet.move(1) for bullet in self.bullets
+        ]
+
     def invaders_shoot(self, time_interval: int=2) -> None:
         if perf_counter() - self.invaders_last_shoot > time_interval:
             column = randint(0, len(self.invaders)-1)
@@ -89,11 +94,11 @@ class App():
                     self.bullets.append(invader.shoot()) 
                     self.invaders_last_shoot = perf_counter()
                     return
-    
-    def move_bullets(self) -> None:
-        [
-            bullet.move(1) for bullet in self.bullets
-        ]
+    def user_shoot(self, time_interval: numeric=0.5) -> None:
+        if perf_counter() - self.user_last_shoot > time_interval:
+            self.bullets.append(self.user.shoot())
+            self.user_last_shoot = perf_counter()
+
         
     def check_collisions(self) -> None:
         for column, rows in enumerate(self.invaders):
@@ -137,8 +142,6 @@ class App():
             self.invaders.pop(i) for i in columns_to_remove
         ]
         
-    def stop(self,) -> None:
-        self.run = False
         
     def check_lifes(self,) -> None:
         if self.lifes.value <= 0:
@@ -170,6 +173,9 @@ class App():
                 bullet.damage() for bullet in self.bullets
             ]
             self.bullets = []
+
+    def stop(self,) -> None:
+        self.run = False
         
 def main():
     app = App()
