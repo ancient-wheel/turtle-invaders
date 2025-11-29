@@ -6,6 +6,7 @@ from spaceships import SpaceShip, Invader, Bullet, N, S
 from collections import deque
 from random import randint
 from contextlib import suppress
+from fortresses import Fortress
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -38,18 +39,28 @@ class App():
         self.invaders_last_move = perf_counter()
         self.bullets = []
         self.run = True
+        self.fortresses = self.initialize_fortresses(-300)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
         self.screen.onkey(lambda: self.bullets.append(self.user.shoot()) if perf_counter() - self.user_last_shoot > 2 else ..., "space")
         self.screen.onkey(self.stop, "q")
-        
+    
+    ### INITIALIZATION ###
     def initialize_invaders(self, start_y_cor: numeric=80, rows: int=7) -> list[list[Invader]]:
         START_X = int(SCREEN_WIDTH / 2 - 30)
         END_X = int(SCREEN_WIDTH / 4)
         return [
             [ Invader(x, start_y_cor + i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 25)
         ]
-        
+      
+    def initialize_fortresses(self, y: numeric, number: int=4) -> list[Fortress]:
+        if number < 0:
+            raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
+        distance = int(SCREEN_WIDTH / (number + 1))
+        return [
+            Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
+        ]
+      
     def move_invaders(self, sideward_step: numeric=10, forward_step: numeric=10) -> None:
         if perf_counter() - self.invaders_last_move < 2:
             return
@@ -107,7 +118,16 @@ class App():
                         self.lifes.reduce_()
                         self.user_is_hit = True
                         return
-        
+        for i, bullet in enumerate(self.bullets):
+            for k, fortress in enumerate(self.fortresses):
+                if (
+                        (fortress.xcor() - bullet.xcor())**2 + (fortress.ycor() - bullet.ycor())**2 <= (fortress.radius + bullet.radius)**2
+                ):
+                    logger.debug("Bullet hit fortress (%s, %s)", bullet.xcor(), bullet.ycor())
+                    fortress.hit()
+                    bullet.damage()
+                    self.bullets.pop(i)
+                    
     def clear_invader_columns(self):
         columns_to_remove = deque()
         [
@@ -124,6 +144,16 @@ class App():
         if self.lifes.value <= 0:
             self.run = False
             GameOverText()
+            
+    def check_fortresses(self) -> None:
+        to_destroy = deque()
+        for i, fortress in enumerate(self.fortresses):
+            if fortress.lifes <= 0:
+                fortress.destroy()
+                to_destroy.append(i)
+        [
+            self.fortresses.pop(i) for i in to_destroy
+        ]
     
     def update_level(self) -> None:
         if len(self.invaders) == 0:
@@ -161,6 +191,7 @@ def main():
                 app.user_is_hit = False
             app.clear_invader_columns()
             app.check_lifes()
+            app.check_fortresses()
             app.update_level()
             app.screen.update()
             sleep(0.001)

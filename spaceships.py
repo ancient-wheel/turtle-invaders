@@ -11,7 +11,7 @@ class SpaceShip(t.Turtle):
         self.left(90)
         self.color("green")
         self.teleport(0, -330)
-        self.radius = 5
+        self.radius = 10
         
     def shoot(self) -> Bullet:
         return Bullet(self.xcor(), self.ycor(), N, "green")
@@ -24,7 +24,7 @@ class Invader(t.Turtle):
         self.right(90)
         self.color("blue")
         self.teleport(x, y)
-        self.radius = 5
+        self.radius = 10
     
     def shoot(self) -> Bullet:
         return Bullet(self.xcor(), self.ycor(), S, self.color()[0])
