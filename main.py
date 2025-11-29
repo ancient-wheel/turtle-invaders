@@ -87,7 +87,7 @@ class App():
         ]
         
     def check_collision(self) -> None:
-        # collision with invaders
+        check_collision_user_first_time = True
         for column, rows in enumerate(self.invaders):
             for row, invader in enumerate(rows):
                 for i, bullet in enumerate(self.bullets):
@@ -103,6 +103,7 @@ class App():
                         self.invaders[column][row] = None
                         self.score.increase(1)
                     if (
+                        check_collision_user_first_time and
                         (self.user.xcor() - bullet.xcor())**2 +(self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
                         self.user.heading() != bullet.heading()
                     ):
@@ -110,6 +111,7 @@ class App():
                         bullet.damage()
                         self.bullets.pop(i)
                         self.lifes.reduce_()
+                check_collision_user_first_time = False
         
     def clear_invader_columns(self):
         columns_to_remove = deque()
