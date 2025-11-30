@@ -20,7 +20,6 @@ class Score(t.Turtle):
 
     def increase(self, value: int) -> None:
         self.value += value
-        self.update()
         
 class HighScore(Score):
     def __init__(self, value: int=0) -> None:
@@ -47,7 +46,6 @@ class LifeScore(Score):
         
     def reduce_(self,) -> None:
         self.value -= 1
-        self.update()
         
 class Level(Score):
     def __init__(self) -> None:

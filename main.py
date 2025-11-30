@@ -28,10 +28,15 @@ class ItemsToRemove:
     invaders: set[tuple[int, int]] = field(default_factory=set)
     fortresses: set[int] = field(default_factory=set)
     
-def cyclic_execution(fn: Callable[[], None]) -> None:
+class ExitException(Exception): pass
+    
+def cyclic_execution(fn: Callable[[], None], flag: bool) -> None:
     while True:
         fn()
         sleep(0.001)
+        if not flag:
+            logger.info("Stop cyclic_execution with ExitException.")
+            raise ExitException()
 
 class App():
     def __init__(self):
@@ -41,14 +46,15 @@ class App():
         self.screen.bgcolor("black")
         self.screen.tracer(0)
         self.screen.listen()
-        self.score = Score()
-        self.high_score = HighScore()
-        self.lifes = LifeScore()
-        self.level = Level()
+        self.game_score = Score()
+        self.game_high_score = HighScore()
+        self.game_lifes = LifeScore()
+        self.game_level = Level()
+        self.game_level_up = False
         self.user = SpaceShip()
         self.user_last_shoot = perf_counter() - 30
-        self.user_is_hit = False
-        self.invaders = self.initialize_invaders()
+        self.invaders = None
+        self.initialize_invaders()
         self.invaders_movement_direction = 1 # values -1 or 1
         self.invaders_last_shoot = perf_counter() - 30
         self.invaders_last_move = perf_counter()
@@ -57,25 +63,26 @@ class App():
         self.tasks = Queue()
         self.tasks_gui = Queue()
         self.run = True
-        self.fortresses = self.initialize_fortressesV2(-290)
+        self.fortresses = None
+        self.initialize_fortressesV2(-290)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
         self.screen.onkey(self.user_shoot, "space")
         self.screen.onkey(self.stop, "q")
     
     ### INITIALIZATION ###
-    def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> list[list[Invader]]:
+    def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> None:
         START_X = int(SCREEN_WIDTH / 2 - 30)
         END_X = int(SCREEN_WIDTH / 4)
-        return [
+        self.invaders = [
             [ Invader(x, start_y_cor - i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 40)
         ]
       
-    def initialize_fortresses(self, y: numeric, number: int=4) -> list[Fortress]:
+    def initialize_fortresses(self, y: numeric, number: int=4) -> None:
         if number < 0:
             raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
         distance = int(SCREEN_WIDTH / (number + 1))
-        return [
+        self.fortresses = [
             Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
         ]
         
@@ -83,15 +90,14 @@ class App():
         if number < 0:
             raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
         distance = int(SCREEN_WIDTH / (number + 1))
-        result = []
+        self.fortresses = []
         for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance):
-            result.append(
+            self.fortresses.append(
                 Fortress(x-Fortress.radius, y)
             )
-            result.append(
+            self.fortresses.append(
                 Fortress(x+Fortress.radius, y)
             )
-        return result
       
     ### MOVEMENTS ###
     def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=30) -> None:
@@ -158,7 +164,7 @@ class App():
             ):
                 logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
                 self.to_remove.bullets.add(i)
-                self.tasks_gui.put(self.lifes.reduce_)
+                self.tasks_gui.put(self.game_lifes.reduce_)
                 self.tasks.put(self.reset_bullets)
                 self.tasks.put(self.check_lifes)
             for fortress in self.fortresses:
@@ -181,12 +187,13 @@ class App():
                         self.tasks_gui.put(invader.destroy)
                         self.tasks_gui.put(bullet.destroy)
                         self.to_remove.bullets.add(i)
-                        self.tasks_gui.put((lambda: self.score.increase(1)))
+                        self.tasks_gui.put((lambda: self.game_score.increase(1)))
                         self.to_remove.invaders.add((col, row))
                     
     def check_lifes(self,) -> None:
-        if self.lifes.value <= 0:
-            self.run = False
+        if self.game_lifes.value <= 0:
+            logger.info("User lost all life points")
+            self.stop()
             self.tasks_gui.put(self.game_over)
             
     def check_invaders_win(self) -> bool:
@@ -198,11 +205,12 @@ class App():
         return False
     
     def update_level(self) -> None:
-        if len(self.invaders) == 0:
-            self.reset_bullets()
-            self.invaders = self.initialize_invaders()
-            self.level.value += 1
-            self.level.update()
+        if self.game_level_up:
+            logger.debug("Updating level")
+            self.tasks.put(self.reset_bullets)
+            self.tasks.put( self.game_level.increase )
+            self.tasks_gui.put(self.initialize_invaders)
+            self.tasks_gui.put( self.game_level.update() )
             logger.debug("Updated level")
             
     def reset_bullets(self) -> None:
@@ -222,79 +230,69 @@ class App():
             queue.task_done()
 
     def remove_items(self) -> None:
-        self.tasks.put((lambda: self.remove_item("bullets")))
-        self.tasks.put((lambda: self.remove_item("fortresses")))
-        self.tasks.put(self.remove_invaders)
-                
-    def remove_item(self, obj: str) -> None:
-        lst = [ item for i, item in enumerate(getattr(self, obj)) if i not in getattr(self.to_remove, obj)]
-        rlock.acquire()
-        setattr(self, obj, lst)
-        rlock.release()
-        rlock.acquire()
-        getattr(self.to_remove, obj).clear()
-        rlock.release()
+        for item in ("fortresses", "bullets", "invaders"):
+            if item in ("invaders",):
+                lst = [
+                    [
+                        item for row, item in enumerate(rows) if (column, row) not in self.to_remove.invaders
+                    ] for column, rows in enumerate(self.invaders) 
+                ]
+            else:
+                lst = [ obj for i, obj in enumerate(getattr(self, item)) if i not in getattr(self.to_remove, item)]
+            rlock.acquire()
+            setattr(self, item, lst)
+            rlock.release()
+            rlock.acquire()
+            getattr(self.to_remove, item).clear()
+            rlock.release()
         
-    def remove_invaders(self) -> None:
-        lst = [
-            [
-                item for row, item in enumerate(rows) if (column, row) not in self.to_remove.invaders
-            ] for column, rows in enumerate(self.invaders) 
-        ]
-        rlock.acquire()
-        setattr(self, "invaders", lst)
-        rlock.release()
-        rlock.acquire()
-        getattr(self.to_remove, "invaders").clear()
-        rlock.release()
-    
     def stop(self) -> None:
+        logger.info("Stopping game...")
         self.run = False
         
     def game_over(self) -> None:
         GameOverText()
         self.screen.update()
-        sleep(7)
+        self.screen.exitonclick()
         
 def main():
+    logger.info("Starting game...")
     app = App()
+    logger.info("Starting game... is done.")
     with suppress(FileNotFoundError):
         logger.debug("Searching for stored high score")
         with open("highscore") as f:
             logger.debug("Reading high score")
-            app.high_score.value = int(f.read())
-            app.high_score.update()
+            app.game_high_score.value = int(f.read())
+            app.game_high_score.update()
             logger.debug("Set high score")
+        logger.debug("Searching for stored high score is done.")
             
-    th = threading.Thread(target=(lambda: cyclic_execution(lambda: app.perform_tasks(app.tasks))), name="tasks")
+    logger.info("Starting thread with tasks...")
+    th = threading.Thread(target=(lambda: cyclic_execution(lambda: app.perform_tasks(app.tasks), app.run)), name="tasks")
     th.start()
+    logger.info("Start main thread...")
     while app.run:
-        try:
-            app.invaders_shoot()
-            app.move_invaders()
-            app.move_bullets()
-            app.check_collisions()
-            if app.user_is_hit:
-                app.reset_bullets()
-                app.user_is_hit = False
-            # app.check_lifes()
-            app.remove_items()
-            app.perform_tasks(app.tasks_gui)
-            app.update_level()
-            if app.check_invaders_win():
-                app.stop()
-                app.check_invaders_win()
-                app.game_over()
-            app.screen.update()
-            sleep(0.001)
-        except KeyboardInterrupt:
+        app.invaders_shoot()
+        app.move_invaders()
+        app.move_bullets()
+        app.check_collisions()
+        app.tasks.put(app.remove_items)
+        app.update_level()
+        if app.check_invaders_win():
             app.stop()
-
-    if app.score.value > app.high_score.value:
+            app.game_over()
+        app.perform_tasks(app.tasks_gui)
+        app.screen.update()
+        sleep(0.001)
+    logger.info("Main thread is stopping...")
+    logger.info("Saving high score...")
+    if app.game_score.value > app.game_high_score.value:
         logger.debug("Score is higher then current high score.")
         with open("highscore", "w") as f:
-            f.write(str(app.score.value))
+            f.write(str(app.game_score.value))
             logger.debug("New high score is stored")
+    logger.info("Saving high score... is done.")
     
 if __name__ == "__main__":
     main()
