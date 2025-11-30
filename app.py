@@ -66,11 +66,11 @@ class App():
         self.cooldown_user_shoot = 0.5
         self.cooldown_user_last_shoot = perf_counter() - 30
         self.cooldown_invaders_shoot = 2
-        self.cooldown_invaders_last_shoot = perf_counter() - 30
+        self.cooldown_invaders_last_shoot = perf_counter()
         self.cooldown_invaders_movement = 2
         self.cooldown_invaders_last_move = perf_counter()
         self.cooldown_bullet_movement = 0.005
-        self.cooldown_bullet_last_move = perf_counter() - 30
+        self.cooldown_bullet_last_move = perf_counter()
         self.initialize_fortressesV2(-290)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
@@ -225,6 +225,8 @@ class App():
                     self.tasks_main.put(bullet.destroy)
                     self.to_remove.bullets.add(i)
                     self.to_remove.bullets.add(n)
+            if bullet.ycor() < -SCREEN_HEIGHT / 2 or bullet.ycor() > SCREEN_HEIGHT / 2:
+                self.to_remove.bullets.add(i)
                     
     def check_lifes_left(self,) -> bool:
         if self.game_lifes.value <= 0:

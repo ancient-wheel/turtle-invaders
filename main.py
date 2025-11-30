@@ -3,6 +3,7 @@ from contextlib import suppress
 import threading
 from app import App, cyclic_execution, perform_tasks
 from time import sleep
+from scoreboard import CountDownText
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -25,6 +26,13 @@ def main():
     th = threading.Thread(target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)), name="tasks")
     th.start()
     logger.info("Start main thread...")
+    count_down = CountDownText()
+    app.tasks_main.put((lambda: count_down.write_(3)))
+    app.tasks_main.put((lambda: count_down.write_(2)))
+    app.tasks_main.put((lambda: count_down.write_(1)))
+    app.tasks_main.put((lambda: count_down.write_("Go")))
+    app.tasks_main.put((lambda: count_down.write_("Go")))
+    app.tasks_main.put(count_down.hide)
     while app.run:
         app.invaders_shoot()
         app.move_invaders()

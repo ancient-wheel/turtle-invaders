@@ -1,5 +1,6 @@
 import turtle as t
 import logging
+from time import sleep
 
 logger = logging.getLogger(__name__)
 FONT = ("TIMES NEW ROMAN", 24, "bold")
@@ -66,3 +67,18 @@ class GameOverText(t.Turtle):
         self.teleport(-200, 0)
         self.write("GAME OVER", font=("Time New Roman", 50, "bold"))
         
+class CountDownText(t.Turtle):
+    def __init__(self):
+        super().__init__()
+        self.hideturtle()
+        self.penup()
+        self.color("white")
+        self.teleport(-30, 0)
+        
+    def write_(self, value: int | float | str) -> None:
+        self.clear()
+        self.write(f"{value}", font=("Time New Roman", 60, "bold"))
+        sleep(1)
+        
+    def hide(self) -> None:
+        self.clear()
