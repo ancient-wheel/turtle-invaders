@@ -29,7 +29,7 @@ class ItemsToRemove:
     invaders: set[tuple[int, int]] = field(default_factory=set)
     fortresses: set[int] = field(default_factory=set)
     
-class ExitException(Exception): pass
+class StopThreadException(Exception): pass
     
 def cyclic_execution(fn: Callable[[], None], app: App) -> None:
     while True:
@@ -37,7 +37,7 @@ def cyclic_execution(fn: Callable[[], None], app: App) -> None:
         sleep(0.001)
         if not app.run:
             logger.info("Stop cyclic_execution with ExitException.")
-            raise ExitException()
+            raise StopThreadException()
 
 class App():
     def __init__(self):
@@ -53,18 +53,23 @@ class App():
         self.game_level = Level()
         self.game_level_up = False
         self.user = SpaceShip()
-        self.user_last_shoot = perf_counter() - 30
         self.invaders = None
         self.initialize_invaders()
         self.invaders_movement_direction = 1 # values -1 or 1
-        self.invaders_last_shoot = perf_counter() - 30
-        self.invaders_last_move = perf_counter()
         self.bullets = []
         self.to_remove = ItemsToRemove()
         self.tasks = Queue()
         self.tasks_gui = Queue()
         self.run = True
         self.fortresses = None
+        self.cooldown_user_shoot = 0.5
+        self.cooldown_user_last_shoot = perf_counter() - 30
+        self.cooldown_invaders_shoot = 2
+        self.cooldown_invaders_last_shoot = perf_counter() - 30
+        self.cooldown_invaders_movement = 2
+        self.cooldown_invaders_last_move = perf_counter()
+        self.cooldown_bullet_movement = 0.005
+        self.cooldown_bullet_last_move = perf_counter() - 30
         self.initialize_fortressesV2(-290)
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
         self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
@@ -102,9 +107,9 @@ class App():
       
     ### MOVEMENTS ###
     def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=30) -> None:
-        if perf_counter() - self.invaders_last_move < 1:
+        if perf_counter() - self.cooldown_invaders_last_move < self.cooldown_invaders_movement:
             return
-        self.invaders_last_move = perf_counter()
+        self.cooldown_invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
         # first_column_to_move = {-1: 0, 1: -1}
         x_is_found = False
@@ -131,28 +136,32 @@ class App():
             ]
             
     def move_bullets(self) -> None:
+        if perf_counter() - self.cooldown_bullet_last_move < self.cooldown_bullet_movement:
+            return
+        self.cooldown_bullet_last_move = perf_counter()
         [
             bullet.move(1) for bullet in self.bullets
         ]
 
     ### SHOOTING ###
-    def invaders_shoot(self, time_interval: int=2) -> None:
-        if perf_counter() - self.invaders_last_shoot > time_interval:
-            column = randint(0, len(self.invaders)-1)
-            for invader in self.invaders[column][::-1]:
-                if invader is not None:
-                    rlock.acquire()
-                    self.bullets.append(invader.shoot()) 
-                    rlock.release()
-                    self.invaders_last_shoot = perf_counter()
-                    return
-                
+    def invaders_shoot(self) -> None:
+        if perf_counter() - self.cooldown_invaders_last_shoot < self.cooldown_invaders_shoot:
+            return
+        column = randint(0, len(self.invaders)-1)
+        for invader in self.invaders[column][::-1]:
+            if invader is not None:
+                rlock.acquire()
+                self.bullets.append(invader.shoot()) 
+                rlock.release()
+                self.cooldown_invaders_last_shoot = perf_counter()
+                return
+            
     def user_shoot(self, time_interval: numeric=0.5) -> None:
-        if perf_counter() - self.user_last_shoot > time_interval:
+        if perf_counter() - self.cooldown_user_last_shoot > time_interval:
             rlock.acquire()
             self.bullets.append(self.user.shoot())
             rlock.release()
-            self.user_last_shoot = perf_counter()
+            self.cooldown_user_last_shoot = perf_counter()
 
     ### CHECKS ###
     def check_collisions(self) -> None:
@@ -188,7 +197,8 @@ class App():
                         self.tasks_gui.put(invader.destroy)
                         self.tasks_gui.put(bullet.destroy)
                         self.to_remove.bullets.add(i)
-                        self.tasks_gui.put((lambda: self.game_score.increase(1)))
+                        self.tasks.put((lambda: self.game_score.increase(1)))
+                        self.tasks_gui.put(self.game_score.update)
                         self.to_remove.invaders.add((col, row))
                     
     def check_lifes(self,) -> None:
