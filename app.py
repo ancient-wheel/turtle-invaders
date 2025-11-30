@@ -54,7 +54,7 @@ class App():
         self.game_level = Level()
         self.game_level_up = False
         self.user = SpaceShip()
-        self.invaders = None
+        self.invaders: list[list[Invader]]
         self.invaders_movement_direction = 1 # values -1 or 1
         self.initialize_invaders()
         self.bullets = []
@@ -62,7 +62,7 @@ class App():
         self.tasks = Queue()
         self.tasks_main = Queue()
         self.run = True
-        self.fortresses = None
+        self.fortresses: list[Fortress]
         self.cooldown_user_shoot = 0.5
         self.cooldown_user_last_shoot = perf_counter() - 30
         self.cooldown_invaders_shoot = 2
@@ -94,7 +94,7 @@ class App():
             Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
         ]
         
-    def initialize_fortressesV2(self, y: numeric, number: int=4) -> list[Fortress]:
+    def initialize_fortressesV2(self, y: numeric, number: int=4) -> None:
         if number < 0:
             raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
         distance = int(SCREEN_WIDTH / (number + 1))
