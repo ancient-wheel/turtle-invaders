@@ -18,6 +18,8 @@ class Fortress(t.Turtle):
         
     def hit(self) -> None:
         self.lifes -= 1
+    
+    def change_color(self) -> None:
         self.color(next(COLORS))
         
     def destroy(self) -> None:
