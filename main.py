@@ -39,6 +39,12 @@ def cyclic_execution(fn: Callable[[], None], app: App) -> None:
             logger.info("Stop cyclic_execution with ExitException.")
             raise StopThreadException()
 
+def perform_tasks(queue: Queue) -> None:
+    if queue.qsize() > 0:
+        task = queue.get()
+        task()
+        queue.task_done()
+
 class App():
     def __init__(self):
         self.screen = t.Screen()
@@ -54,8 +60,8 @@ class App():
         self.game_level_up = False
         self.user = SpaceShip()
         self.invaders = None
-        self.initialize_invaders()
         self.invaders_movement_direction = 1 # values -1 or 1
+        self.initialize_invaders()
         self.bullets = []
         self.to_remove = ItemsToRemove()
         self.tasks = Queue()
@@ -80,6 +86,7 @@ class App():
     def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> None:
         START_X = int(SCREEN_WIDTH / 2 - 30)
         END_X = int(SCREEN_WIDTH / 4)
+        self.invaders_movement_direction = 1
         self.invaders = [
             [ Invader(x, start_y_cor - i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 40)
         ]
@@ -104,6 +111,16 @@ class App():
             self.fortresses.append(
                 Fortress(x+Fortress.radius, y)
             )
+
+    def reset_bullets(self) -> None:
+        if len(self.bullets) > 0:
+            logger.debug("Reset list of bullets")
+            [
+                self.tasks_gui.put(bullet.destroy) for bullet in self.bullets
+            ]
+            rlock.acquire()
+            self.to_remove.bullets.update([i for i in range(len(self.bullets))])
+            rlock.release()
       
     ### MOVEMENTS ###
     def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=30) -> None:
@@ -124,6 +141,9 @@ class App():
             if x_is_found:
                 break
         if x is None: 
+            logger.debug("Missing invaders.")
+            logger.debug("Asume a level up...")
+            self.game_level_up = True
             return
         if SCREEN_LEFT_LIMIT_OBJECTS < x + sideward_step*direction < SCREEN_RIGHT_LIMIT_OBJECTS:
             [
@@ -175,6 +195,7 @@ class App():
                 logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
                 self.to_remove.bullets.add(i)
                 self.tasks_gui.put(self.game_lifes.reduce_)
+                self.tasks_gui.put(self.game_lifes.update)
                 self.tasks.put(self.reset_bullets)
                 self.tasks.put(self.check_lifes)
             for fortress in self.fortresses:
@@ -204,8 +225,8 @@ class App():
     def check_lifes(self,) -> None:
         if self.game_lifes.value <= 0:
             logger.info("User lost all life points")
-            self.stop()
             self.tasks_gui.put(self.game_over)
+            self.stop()
             
     def check_invaders_win(self) -> bool:
         for column in self.invaders:
@@ -215,30 +236,28 @@ class App():
                         return True
         return False
     
-    def update_level(self) -> None:
+    ### UPDATE GAME STATE ###
+    def increase_game_speed(self) -> None:
+        self.cooldown_bullet_movement -= 0.001
+        self.cooldown_invaders_movement -= 0.03
+        self.cooldown_user_shoot -= 0.009
+    
+    def increase_level(self) -> None:
         if self.game_level_up:
+            self.game_level_up = False
             logger.debug("Updating level")
             self.tasks.put(self.reset_bullets)
-            self.tasks.put( self.game_level.increase )
+            self.tasks.put((lambda: self.game_level.increase(1)))
             self.tasks_gui.put(self.initialize_invaders)
-            self.tasks_gui.put( self.game_level.update() )
+            self.tasks_gui.put(self.game_level.update)
+            self.tasks.put(self.increase_game_speed)
             logger.debug("Updated level")
             
-    def reset_bullets(self) -> None:
-        if len(self.bullets) > 0:
-            logger.debug("Reset list of bullets")
-            [
-                self.tasks_gui.put(bullet.destroy) for bullet in self.bullets
-            ]
-            rlock.acquire()
-            self.to_remove.bullets.update([i for i in range(len(self.bullets))])
-            rlock.release()
-            
-    def perform_tasks(self, queue: Queue) -> None:
-        if queue.qsize() > 0:
-            task = queue.get()
-            task()
-            queue.task_done()
+    def game_over(self) -> None:
+        logger.info("Game over.")
+        GameOverText()
+        self.screen.update()
+        self.screen.exitonclick()
 
     def remove_items(self) -> None:
         for item in ("fortresses", "bullets", "invaders"):
@@ -261,11 +280,6 @@ class App():
         logger.info("Stopping game...")
         self.run = False
         
-    def game_over(self) -> None:
-        GameOverText()
-        self.screen.update()
-        self.screen.exitonclick()
-        
 def main():
     logger.info("Starting game...")
     app = App()
@@ -280,7 +294,7 @@ def main():
         logger.debug("Searching for stored high score is done.")
             
     logger.info("Starting thread with tasks...")
-    th = threading.Thread(target=(lambda: cyclic_execution(lambda: app.perform_tasks(app.tasks), app)), name="tasks")
+    th = threading.Thread(target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)), name="tasks")
     th.start()
     logger.info("Start main thread...")
     while app.run:
@@ -289,11 +303,11 @@ def main():
         app.move_bullets()
         app.check_collisions()
         app.tasks.put(app.remove_items)
-        app.update_level()
+        app.increase_level()
         if app.check_invaders_win():
             app.stop()
             app.game_over()
-        app.perform_tasks(app.tasks_gui)
+        perform_tasks(app.tasks_gui)
         app.screen.update()
         sleep(0.001)
     logger.info("Main thread is stopping...")
