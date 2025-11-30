@@ -15,7 +15,7 @@ import threading
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 800
 SCREEN_LEFT_LIMIT_OBJECTS = - SCREEN_WIDTH / 2 + 5
@@ -32,12 +32,10 @@ class ItemsToRemove:
 class StopThreadException(Exception): pass
     
 def cyclic_execution(fn: Callable[[], None], app: App) -> None:
-    while True:
+    while app.run:
         fn()
         sleep(0.001)
-        if not app.run:
-            logger.info("Stop cyclic_execution with ExitException.")
-            raise StopThreadException()
+    logger.info("Stop cyclic_execution with ExitException.")
 
 def perform_tasks(queue: Queue) -> None:
     if queue.qsize() > 0:
@@ -197,7 +195,7 @@ class App():
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
                 self.tasks.put(self.reset_bullets)
-                self.tasks.put(self.check_lifes)
+                # self.tasks_main.put(self.check_lifes)
             for fortress in self.fortresses:
                 if (
                     (fortress.xcor() - bullet.xcor())**2 + (fortress.ycor() - bullet.ycor())**2 <= (fortress.radius + bullet.radius)**2
@@ -222,11 +220,11 @@ class App():
                         self.tasks_main.put(self.game_score.update)
                         self.to_remove.invaders.add((col, row))
                     
-    def check_lifes(self,) -> None:
+    def check_lifes_left(self,) -> bool:
         if self.game_lifes.value <= 0:
             logger.info("User lost all life points")
-            self.tasks_main.put(self.game_over)
-            self.stop()
+            return False
+        return True
             
     def check_invaders_win(self) -> bool:
         for column in self.invaders:
@@ -256,8 +254,6 @@ class App():
     def game_over(self) -> None:
         logger.info("Game over.")
         GameOverText()
-        self.screen.update()
-        self.screen.exitonclick()
 
     def remove_items(self) -> None:
         for item in ("fortresses", "bullets", "invaders"):
@@ -304,14 +300,16 @@ def main():
         app.check_collisions()
         app.tasks.put(app.remove_items)
         app.increase_level()
-        if app.check_invaders_win():
-            app.stop()
-            app.game_over()
         perform_tasks(app.tasks_main)
+        if app.check_invaders_win() or not app.check_lifes_left():
+            app.game_over()
+            app.stop()
         app.screen.update()
         sleep(0.001)
     logger.info("Main thread is stopping...")
     logger.debug("Tasks thread is still alive? %s", th.is_alive())
+    if app.check_invaders_win() or not app.check_lifes_left():
+        app.screen.exitonclick()
     logger.info("Saving high score...")
     if app.game_score.value > app.game_high_score.value:
         logger.debug("Score is higher then current high score.")
