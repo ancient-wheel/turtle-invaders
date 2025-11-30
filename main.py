@@ -1,3 +1,4 @@
+from __future__ import annotations
 import turtle as t
 import logging
 from scoreboard import Score, HighScore, LifeScore, Level, GameOverText
@@ -30,11 +31,11 @@ class ItemsToRemove:
     
 class ExitException(Exception): pass
     
-def cyclic_execution(fn: Callable[[], None], flag: bool) -> None:
+def cyclic_execution(fn: Callable[[], None], app: App) -> None:
     while True:
         fn()
         sleep(0.001)
-        if not flag:
+        if not app.run:
             logger.info("Stop cyclic_execution with ExitException.")
             raise ExitException()
 
@@ -269,7 +270,7 @@ def main():
         logger.debug("Searching for stored high score is done.")
             
     logger.info("Starting thread with tasks...")
-    th = threading.Thread(target=(lambda: cyclic_execution(lambda: app.perform_tasks(app.tasks), app.run)), name="tasks")
+    th = threading.Thread(target=(lambda: cyclic_execution(lambda: app.perform_tasks(app.tasks), app)), name="tasks")
     th.start()
     logger.info("Start main thread...")
     while app.run:
@@ -286,6 +287,7 @@ def main():
         app.screen.update()
         sleep(0.001)
     logger.info("Main thread is stopping...")
+    logger.debug("Tasks thread is still alive? %s", th.is_alive())
     logger.info("Saving high score...")
     if app.game_score.value > app.game_high_score.value:
         logger.debug("Score is higher then current high score.")
