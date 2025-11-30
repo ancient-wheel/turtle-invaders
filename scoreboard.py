@@ -33,7 +33,6 @@ class HighScore(Score):
         self.clear()
         self.write(f"HIGH SCORE: <{self.value:04}>", font=FONT)
 
-
 class LifeScore(Score):
     def __init__(self) -> None:
         super().__init__()

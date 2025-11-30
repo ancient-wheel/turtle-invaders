@@ -72,8 +72,12 @@ class App():
         self.cooldown_bullet_movement = 0.005
         self.cooldown_bullet_last_move = perf_counter()
         self.initialize_fortressesV2(-290)
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left")
-        self.screen.onkey(lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right")
+        self.screen.onkey(
+            lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left"
+        )
+        self.screen.onkey(
+            lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right"
+        )
         self.screen.onkey(self.user_shoot, "space")
         self.screen.onkey(self.stop, "q")
     
@@ -141,12 +145,16 @@ class App():
             return
         if SCREEN_LEFT_LIMIT_OBJECTS < x + sideward_step*direction < SCREEN_RIGHT_LIMIT_OBJECTS:
             [
-                [item.teleport(item.xcor()+sideward_step*direction, item.ycor()) for item in column if item is not None] for column in self.invaders
+                [
+                    item.teleport(item.xcor()+sideward_step*direction, item.ycor()) for item in column if item is not None
+                ] for column in self.invaders
             ]
         else:
             self.invaders_movement_direction *= -1
             [
-                [item.teleport(item.xcor(), item.ycor()-forward_step) for item in column if item is not None] for column in self.invaders
+                [
+                    item.teleport(item.xcor(), item.ycor()-forward_step) for item in column if item is not None
+                ] for column in self.invaders
             ]
             
     def move_bullets(self) -> None:
@@ -191,7 +199,6 @@ class App():
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
                 self.tasks.put(self.reset_bullets)
-                # self.tasks_main.put(self.check_lifes)
             for fortress in self.fortresses:
                 if (
                     (fortress.xcor() - bullet.xcor())**2 + (fortress.ycor() - bullet.ycor())**2 <= (fortress.radius + bullet.radius)**2
@@ -227,6 +234,7 @@ class App():
                     self.to_remove.bullets.add(n)
             if bullet.ycor() < -SCREEN_HEIGHT / 2 or bullet.ycor() > SCREEN_HEIGHT / 2:
                 self.to_remove.bullets.add(i)
+                self.tasks_main.put(bullet.destroy)
                     
     def check_lifes_left(self,) -> bool:
         if self.game_lifes.value <= 0:
