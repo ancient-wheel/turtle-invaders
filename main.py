@@ -23,8 +23,10 @@ def main():
         logger.debug("Searching for stored high score is done.")
             
     count_down = CountDownText()
-    for count in (3, 2, 1, "Go"):
-        app.tasks_main.put(getattr(count_down, f"write_{count}"))
+    values = (3, 2, 1, "Go")
+    values_iter = iter(values)
+    for _ in range(len(values)):
+        app.tasks_main.put((lambda: count_down.write_(next(values_iter))))
         app.tasks_main.put(app.screen.update)
         app.tasks_main.put((lambda: sleep(1)))
     app.tasks_main.put(count_down.hide)
