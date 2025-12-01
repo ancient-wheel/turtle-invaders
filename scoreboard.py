@@ -77,7 +77,18 @@ class CountDownText(t.Turtle):
     def write_(self, value: int | float | str) -> None:
         self.clear()
         self.write(f"{value}", font=("Time New Roman", 60, "bold"))
-        sleep(1)
         
     def hide(self) -> None:
         self.clear()
+        
+    def write_3(self) -> None:
+        self.write_(3)
+        
+    def write_2(self) -> None:
+        self.write_(2)
+
+    def write_1(self) -> None:
+        self.write_(1)
+
+    def write_Go(self) -> None:
+        self.write_("Go")

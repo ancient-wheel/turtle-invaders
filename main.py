@@ -22,17 +22,19 @@ def main():
             logger.debug("Set high score")
         logger.debug("Searching for stored high score is done.")
             
+    count_down = CountDownText()
+    for count in (3, 2, 1, "Go"):
+        app.tasks_main.put(getattr(count_down, f"write_{count}"))
+        app.tasks_main.put(app.screen.update)
+        app.tasks_main.put((lambda: sleep(1)))
+    app.tasks_main.put(count_down.hide)
+    while app.tasks_main.qsize() > 0:
+        perform_tasks(app.tasks_main)
+        sleep(0.01)
     logger.info("Starting thread with tasks...")
     th = threading.Thread(target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)), name="tasks")
     th.start()
     logger.info("Start main thread...")
-    count_down = CountDownText()
-    app.tasks_main.put((lambda: count_down.write_(3)))
-    app.tasks_main.put((lambda: count_down.write_(2)))
-    app.tasks_main.put((lambda: count_down.write_(1)))
-    app.tasks_main.put((lambda: count_down.write_("Go")))
-    app.tasks_main.put((lambda: count_down.write_("Go")))
-    app.tasks_main.put(count_down.hide)
     while app.run:
         app.invaders_shoot()
         app.move_invaders()
