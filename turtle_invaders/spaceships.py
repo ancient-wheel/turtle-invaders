@@ -1,12 +1,8 @@
 from __future__ import annotations
 import turtle as t
-from enum import IntEnum
-
-type numeric = int | float
-
-class ObjectDirection(IntEnum):
-    NORTH = 90
-    SOUTH = 270
+from bullet import Bullet
+from constants import ObjectDirection
+from types_ import numeric
 
 class SpaceShip(t.Turtle):
     def __init__(self) -> None:
@@ -37,17 +33,3 @@ class Invader(t.Turtle):
     def destroy(self) -> None:
         self.hideturtle()
         
-class Bullet(t.Turtle):
-    def __init__(self, x: numeric, y: numeric, direction: ObjectDirection, color: str) -> None:
-        super().__init__()
-        self.penup()
-        self.left(direction.value)
-        self.color(color)
-        self.teleport(x, y)
-        self.radius = 3
-        
-    def move(self, step: numeric):
-        self.forward(step)
-        
-    def destroy(self) -> None:
-        self.hideturtle()

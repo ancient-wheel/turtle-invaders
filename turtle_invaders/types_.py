@@ -1,0 +1,1 @@
+type numeric = int | float

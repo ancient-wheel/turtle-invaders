@@ -38,6 +38,7 @@ class HighScore(t.Turtle):
         self.clear()
         self.write(f"HIGH SCORE: <{self.value:04}>", font=NORMAL_FONT)
 
+
 class LifeScore(t.Turtle):
     def __init__(self) -> None:
         super().__init__()
@@ -69,6 +70,9 @@ class Level(t.Turtle):
         self.clear()
         self.write(f"LEVEL: {self.value:2}", font=NORMAL_FONT)
 
+    def increase(self, value: int) -> None:
+        self.value += value
+        
 class GameOverLabel(t.Turtle):
     def __init__(self):
         super().__init__()

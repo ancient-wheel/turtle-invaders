@@ -1,23 +1,21 @@
 from __future__ import annotations
 import turtle as t
 import logging
-from turtle_invaders.scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
 from time import sleep, perf_counter
-from turtle_invaders.spaceships import SpaceShip, Invader
 from random import randint
-from turtle_invaders.fortresses import Fortress
 from dataclasses import dataclass, field
 from queue import Queue
 from collections.abc import Callable
 import threading
+from enum import IntEnum
+from spaceships import SpaceShip, Invader
+from scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
+from fortresses import Fortress
+from types_ import numeric
+from constants import Screen
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 800
-SCREEN_LEFT_LIMIT_OBJECTS = - SCREEN_WIDTH / 2 + 5
-SCREEN_RIGHT_LIMIT_OBJECTS = SCREEN_WIDTH / 2 - 15
-type numeric = int | float
 rlock = threading.RLock()
 
 @dataclass
@@ -39,11 +37,15 @@ def perform_tasks(queue: Queue) -> None:
         task = queue.get()
         task()
         queue.task_done()
+        
+class InvadersMovementDirection(IntEnum):
+    LEFT = -1
+    RIGHT = 1
 
 class App():
     def __init__(self):
         self.screen = t.Screen()
-        self.screen.setup(width=SCREEN_WIDTH, height=SCREEN_HEIGHT)
+        self.screen.setup(width=Screen.WIDTH, height=Screen.HEIGHT)
         self.screen.title("Turtle invaders")
         self.screen.bgcolor("black")
         self.screen.tracer(0)
@@ -55,7 +57,7 @@ class App():
         self.game_level_up = False
         self.user = SpaceShip()
         self.invaders: list[list[Invader]]
-        self.invaders_movement_direction = 1 # values -1 or 1
+        self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.initialize_invaders()
         self.bullets = []
         self.to_remove = ItemsToRemove()
@@ -73,19 +75,19 @@ class App():
         self.cooldown_bullet_last_move = perf_counter()
         self.initialize_fortressesV2(-290)
         self.screen.onkey(
-            lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > SCREEN_LEFT_LIMIT_OBJECTS else ..., "Left"
+            lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > Screen.LEFT_LIMIT_FOR_OBJECTS else ..., "Left"
         )
         self.screen.onkey(
-            lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < SCREEN_RIGHT_LIMIT_OBJECTS else ..., "Right"
+            lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < Screen.RIGHT_LIMIT_FOR_OBJECTS else ..., "Right"
         )
         self.screen.onkey(self.user_shoot, "space")
         self.screen.onkey(self.stop, "q")
     
     ### INITIALIZATION ###
     def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> None:
-        START_X = int(SCREEN_WIDTH / 2 - 30)
-        END_X = int(SCREEN_WIDTH / 4)
-        self.invaders_movement_direction = 1
+        START_X = int(Screen.WIDTH / 2 - 30)
+        END_X = int(Screen.WIDTH / 4)
+        self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.invaders = [
             [ Invader(x, start_y_cor - i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 40)
         ]
@@ -93,17 +95,17 @@ class App():
     def initialize_fortresses(self, y: numeric, number: int=4) -> None:
         if number < 0:
             raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
-        distance = int(SCREEN_WIDTH / (number + 1))
+        distance = int(Screen.WIDTH / (number + 1))
         self.fortresses = [
-            Fortress(x, y) for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance)
+            Fortress(x, y) for x in range(int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance, int(Screen.RIGHT_LIMIT_FOR_OBJECTS), distance)
         ]
         
     def initialize_fortressesV2(self, y: numeric, number: int=4) -> None:
         if number < 0:
             raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
-        distance = int(SCREEN_WIDTH / (number + 1))
+        distance = int(Screen.WIDTH / (number + 1))
         self.fortresses = []
-        for x in range(int(SCREEN_LEFT_LIMIT_OBJECTS) + distance, int(SCREEN_RIGHT_LIMIT_OBJECTS), distance):
+        for x in range(int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance, int(Screen.RIGHT_LIMIT_FOR_OBJECTS), distance):
             self.fortresses.append(
                 Fortress(x-Fortress.radius, y)
             )
@@ -143,7 +145,7 @@ class App():
             logger.debug("Asume a level up...")
             self.game_level_up = True
             return
-        if SCREEN_LEFT_LIMIT_OBJECTS < x + sideward_step*direction < SCREEN_RIGHT_LIMIT_OBJECTS:
+        if Screen.LEFT_LIMIT_FOR_OBJECTS < x + sideward_step*direction < Screen.RIGHT_LIMIT_FOR_OBJECTS:
             [
                 [
                     item.teleport(item.xcor()+sideward_step*direction, item.ycor()) for item in column if item is not None
@@ -232,7 +234,7 @@ class App():
                     self.tasks_main.put(bullet.destroy)
                     self.to_remove.bullets.add(i)
                     self.to_remove.bullets.add(n)
-            if bullet.ycor() < -SCREEN_HEIGHT / 2 or bullet.ycor() > SCREEN_HEIGHT / 2:
+            if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(bullet.destroy)
                     
