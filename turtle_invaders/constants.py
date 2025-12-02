@@ -1,5 +1,7 @@
 from enum import IntEnum
+from itertools import cycle
 
+COLORS = cycle(("blue", "white", "yellow", "red", "green"))
 
 class ObjectDirection(IntEnum):
     NORTH = 90
