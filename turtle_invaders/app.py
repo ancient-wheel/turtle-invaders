@@ -1,11 +1,11 @@
 from __future__ import annotations
 import turtle as t
 import logging
-from scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
+from turtle_invaders.scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
 from time import sleep, perf_counter
-from spaceships import SpaceShip, Invader
+from turtle_invaders.spaceships import SpaceShip, Invader
 from random import randint
-from fortresses import Fortress
+from turtle_invaders.fortresses import Fortress
 from dataclasses import dataclass, field
 from queue import Queue
 from collections.abc import Callable

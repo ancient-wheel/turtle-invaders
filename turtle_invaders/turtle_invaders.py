@@ -1,9 +1,9 @@
 import logging
 from contextlib import suppress
 import threading
-from app import App, cyclic_execution, perform_tasks
+from turtle_invaders.app import App, cyclic_execution, perform_tasks
 from time import sleep
-from scoreboard import CountDownLabel
+from turtle_invaders.scoreboard import CountDownLabel
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
