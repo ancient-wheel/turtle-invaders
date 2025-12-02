@@ -1,13 +1,17 @@
 import logging
 from contextlib import suppress
 import threading
-from app import App, cyclic_execution, perform_tasks
 from time import sleep
+from pathlib import Path
+from app import App, cyclic_execution, perform_tasks
 from scoreboard import CountDownLabel
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+high_score_path = (Path(__file__).parent / Path("..", "data", "highscore")).resolve()
+with suppress(FileExistsError):
+    high_score_path.mkdir(parents=True)
         
 def main():
     logger.info("Starting game...")
@@ -15,7 +19,7 @@ def main():
     logger.info("Starting game... is done.")
     with suppress(FileNotFoundError):
         logger.debug("Searching for stored high score")
-        with open("highscore") as f:
+        with open(high_score_path) as f:
             logger.debug("Reading high score")
             app.game_high_score.value = int(f.read())
             app.game_high_score.update()
@@ -57,7 +61,7 @@ def main():
     logger.info("Saving high score...")
     if app.game_score.value > app.game_high_score.value:
         logger.debug("Score is higher then current high score.")
-        with open("highscore", "w") as f:
+        with open(high_score_path, "w") as f:
             f.write(str(app.game_score.value))
             logger.debug("New high score is stored")
     logger.info("Saving high score... is done.")
