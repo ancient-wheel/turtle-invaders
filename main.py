@@ -3,7 +3,7 @@ from contextlib import suppress
 import threading
 from app import App, cyclic_execution, perform_tasks
 from time import sleep
-from scoreboard import CountDownText
+from scoreboard import CountDownLabel
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -22,11 +22,11 @@ def main():
             logger.debug("Set high score")
         logger.debug("Searching for stored high score is done.")
             
-    count_down = CountDownText()
+    count_down = CountDownLabel()
     values = (3, 2, 1, "Go")
     values_iter = iter(values)
     for _ in range(len(values)):
-        app.tasks_main.put((lambda: count_down.write_(next(values_iter))))
+        app.tasks_main.put((lambda: count_down.update(next(values_iter))))
         app.tasks_main.put(app.screen.update)
         app.tasks_main.put((lambda: sleep(1)))
     app.tasks_main.put(count_down.hide)

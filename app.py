@@ -1,7 +1,7 @@
 from __future__ import annotations
 import turtle as t
 import logging
-from scoreboard import Score, HighScore, LifeScore, Level, GameOverText
+from scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
 from time import sleep, perf_counter
 from spaceships import SpaceShip, Invader
 from random import randint
@@ -269,7 +269,7 @@ class App():
             
     def game_over(self) -> None:
         logger.info("Game over.")
-        GameOverText()
+        GameOverLabel()
 
     def remove_items(self) -> None:
         for item in ("fortresses", "bullets", "invaders"):
