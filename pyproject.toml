@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "pytest>=9.0.1",
-    "pytest-coverage>=0.0",
-]
+dependencies = []
 
 [tool.pytest]
 pythonpath = ["turtle_invaders"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-coverage>=0.0",
+]

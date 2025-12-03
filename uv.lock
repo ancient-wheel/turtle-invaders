@@ -89,13 +89,17 @@ wheels = [
 name = "day101-space-invaders"
 version = "0.1.0"
 source = { virtual = "." }
-dependencies = [
+
+[package.dev-dependencies]
+dev = [
     { name = "pytest" },
     { name = "pytest-coverage" },
 ]
 
 [package.metadata]
-requires-dist = [
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest-coverage", specifier = ">=0.0" },
 ]
