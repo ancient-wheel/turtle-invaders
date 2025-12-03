@@ -18,31 +18,38 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 rlock = threading.RLock()
 
-@dataclass
-class ItemsToRemove:
-    bullets: set[int] = field(default_factory=set)
-    invaders: set[tuple[int, int]] = field(default_factory=set)
-    fortresses: set[int] = field(default_factory=set)
-    
-class StopThreadException(Exception): pass
-    
+
 def cyclic_execution(fn: Callable[[], None], app: App) -> None:
     while app.run:
         fn()
         sleep(0.001)
     logger.info("Stop cyclic_execution with ExitException.")
 
+
 def perform_tasks(queue: Queue) -> None:
     if queue.qsize() > 0:
         task = queue.get()
         task()
         queue.task_done()
-        
+
+
+@dataclass
+class ItemsToRemove:
+    bullets: set[int] = field(default_factory=set)
+    invaders: set[tuple[int, int]] = field(default_factory=set)
+    fortresses: set[int] = field(default_factory=set)
+
+
+class StopThreadException(Exception):
+    pass
+
+
 class InvadersMovementDirection(IntEnum):
     LEFT = -1
     RIGHT = 1
 
-class App():
+
+class App:
     def __init__(self):
         self.screen = t.Screen()
         self.screen.setup(width=Screen.WIDTH, height=Screen.HEIGHT)
@@ -75,63 +82,86 @@ class App():
         self.cooldown_bullet_last_move = perf_counter()
         self.initialize_fortressesV2(-290)
         self.screen.onkey(
-            lambda: self.user.teleport(self.user.xcor()-15) if self.user.xcor() - 15 > Screen.LEFT_LIMIT_FOR_OBJECTS else ..., "Left"
+            lambda: (
+                self.user.teleport(self.user.xcor() - 15)
+                if self.user.xcor() - 15 > Screen.LEFT_LIMIT_FOR_OBJECTS
+                else ...
+            ),
+            "Left",
         )
         self.screen.onkey(
-            lambda: self.user.teleport(self.user.xcor()+15) if self.user.xcor() + 15 < Screen.RIGHT_LIMIT_FOR_OBJECTS else ..., "Right"
+            lambda: (
+                self.user.teleport(self.user.xcor() + 15)
+                if self.user.xcor() + 15 < Screen.RIGHT_LIMIT_FOR_OBJECTS
+                else ...
+            ),
+            "Right",
         )
         self.screen.onkey(self.user_shoot, "space")
         self.screen.onkey(self.stop, "q")
-    
+
     ### INITIALIZATION ###
-    def initialize_invaders(self, start_y_cor: numeric=300, rows: int=6) -> None:
+    def initialize_invaders(self, start_y_cor: numeric = 300, rows: int = 6) -> None:
         START_X = int(Screen.WIDTH / 2 - 30)
         END_X = int(Screen.WIDTH / 4)
         self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.invaders = [
-            [ Invader(x, start_y_cor - i * 40) for i in range(rows) ] for x in range(-START_X, END_X, 40)
+            [Invader(x, start_y_cor - i * 40) for i in range(rows)]
+            for x in range(-START_X, END_X, 40)
         ]
-      
-    def initialize_fortresses(self, y: numeric, number: int=4) -> None:
+
+    def initialize_fortresses(self, y: numeric, number: int = 4) -> None:
         if number < 0:
-            raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
+            raise ValueError(
+                f"Parameter must be greater or equal null. Given: {number}."
+            )
         distance = int(Screen.WIDTH / (number + 1))
         self.fortresses = [
-            Fortress(x, y) for x in range(int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance, int(Screen.RIGHT_LIMIT_FOR_OBJECTS), distance)
+            Fortress(x, y)
+            for x in range(
+                int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance,
+                int(Screen.RIGHT_LIMIT_FOR_OBJECTS),
+                distance,
+            )
         ]
-        
-    def initialize_fortressesV2(self, y: numeric, number: int=4) -> None:
+
+    def initialize_fortressesV2(self, y: numeric, number: int = 4) -> None:
         if number < 0:
-            raise ValueError(f"Parameter must be greater or equal null. Given: {number}.")
+            raise ValueError(
+                f"Parameter must be greater or equal null. Given: {number}."
+            )
         distance = int(Screen.WIDTH / (number + 1))
         self.fortresses = []
-        for x in range(int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance, int(Screen.RIGHT_LIMIT_FOR_OBJECTS), distance):
-            self.fortresses.append(
-                Fortress(x-Fortress.radius, y)
-            )
-            self.fortresses.append(
-                Fortress(x+Fortress.radius, y)
-            )
+        for x in range(
+            int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance,
+            int(Screen.RIGHT_LIMIT_FOR_OBJECTS),
+            distance,
+        ):
+            self.fortresses.append(Fortress(x - Fortress.radius, y))
+            self.fortresses.append(Fortress(x + Fortress.radius, y))
 
     def reset_bullets(self) -> None:
         if len(self.bullets) > 0:
             logger.debug("Reset list of bullets")
-            [
-                self.tasks_main.put(bullet.destroy) for bullet in self.bullets
-            ]
+            [self.tasks_main.put(bullet.destroy) for bullet in self.bullets]
             rlock.acquire()
             self.to_remove.bullets.update([i for i in range(len(self.bullets))])
             rlock.release()
-      
+
     ### MOVEMENTS ###
-    def move_invaders(self, sideward_step: numeric=15, forward_step: numeric=30) -> None:
-        if perf_counter() - self.cooldown_invaders_last_move < self.cooldown_invaders_movement:
+    def move_invaders(
+        self, sideward_step: numeric = 15, forward_step: numeric = 30
+    ) -> None:
+        if (
+            perf_counter() - self.cooldown_invaders_last_move
+            < self.cooldown_invaders_movement
+        ):
             return
         self.cooldown_invaders_last_move = perf_counter()
         direction = self.invaders_movement_direction
         x_is_found = False
         x = None
-        for row in self.invaders[::direction*-1]:
+        for row in self.invaders[:: direction * -1]:
             for i in row:
                 if i is not None:
                     x = i.xcor()
@@ -140,47 +170,61 @@ class App():
                     break
             if x_is_found:
                 break
-        if x is None: 
+        if x is None:
             logger.debug("Missing invaders.")
             logger.debug("Asume a level up...")
             self.game_level_up = True
             return
-        if Screen.LEFT_LIMIT_FOR_OBJECTS < x + sideward_step*direction < Screen.RIGHT_LIMIT_FOR_OBJECTS:
+        if (
+            Screen.LEFT_LIMIT_FOR_OBJECTS
+            < x + sideward_step * direction
+            < Screen.RIGHT_LIMIT_FOR_OBJECTS
+        ):
             [
                 [
-                    item.teleport(item.xcor()+sideward_step*direction, item.ycor()) for item in column if item is not None
-                ] for column in self.invaders
+                    item.teleport(item.xcor() + sideward_step * direction, item.ycor())
+                    for item in column
+                    if item is not None
+                ]
+                for column in self.invaders
             ]
         else:
             self.invaders_movement_direction *= -1
             [
                 [
-                    item.teleport(item.xcor(), item.ycor()-forward_step) for item in column if item is not None
-                ] for column in self.invaders
+                    item.teleport(item.xcor(), item.ycor() - forward_step)
+                    for item in column
+                    if item is not None
+                ]
+                for column in self.invaders
             ]
-            
+
     def move_bullets(self) -> None:
-        if perf_counter() - self.cooldown_bullet_last_move < self.cooldown_bullet_movement:
+        if (
+            perf_counter() - self.cooldown_bullet_last_move
+            < self.cooldown_bullet_movement
+        ):
             return
         self.cooldown_bullet_last_move = perf_counter()
-        [
-            bullet.move(1) for bullet in self.bullets
-        ]
+        [bullet.move(1) for bullet in self.bullets]
 
     ### SHOOTING ###
     def invaders_shoot(self) -> None:
-        if perf_counter() - self.cooldown_invaders_last_shoot < self.cooldown_invaders_shoot:
+        if (
+            perf_counter() - self.cooldown_invaders_last_shoot
+            < self.cooldown_invaders_shoot
+        ):
             return
-        column = randint(0, len(self.invaders)-1)
+        column = randint(0, len(self.invaders) - 1)
         for invader in self.invaders[column][::-1]:
             if invader is not None:
                 rlock.acquire()
-                self.bullets.append(invader.shoot()) 
+                self.bullets.append(invader.shoot())
                 rlock.release()
                 self.cooldown_invaders_last_shoot = perf_counter()
                 return
-            
-    def user_shoot(self, time_interval: numeric=0.5) -> None:
+
+    def user_shoot(self, time_interval: numeric = 0.5) -> None:
         if perf_counter() - self.cooldown_user_last_shoot > time_interval:
             rlock.acquire()
             self.bullets.append(self.user.shoot())
@@ -192,20 +236,23 @@ class App():
         for i, bullet in enumerate(self.bullets):
             if i in self.to_remove.bullets:
                 continue
-            if (
-                (self.user.xcor() - bullet.xcor())**2 + (self.user.ycor() - bullet.ycor())**2 <= (self.user.radius + bullet.radius)**2 and
-                self.user.heading() != bullet.heading()
-            ):
+            if (self.user.xcor() - bullet.xcor()) ** 2 + (
+                self.user.ycor() - bullet.ycor()
+            ) ** 2 <= (
+                self.user.radius + bullet.radius
+            ) ** 2 and self.user.heading() != bullet.heading():
                 logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
                 self.tasks.put(self.reset_bullets)
             for fortress in self.fortresses:
-                if (
-                    (fortress.xcor() - bullet.xcor())**2 + (fortress.ycor() - bullet.ycor())**2 <= (fortress.radius + bullet.radius)**2
-                ):
-                    logger.debug("Bullet hit fortress (%s, %s)", bullet.xcor(), bullet.ycor())
+                if (fortress.xcor() - bullet.xcor()) ** 2 + (
+                    fortress.ycor() - bullet.ycor()
+                ) ** 2 <= (fortress.radius + bullet.radius) ** 2:
+                    logger.debug(
+                        "Bullet hit fortress (%s, %s)", bullet.xcor(), bullet.ycor()
+                    )
                     self.tasks.put(fortress.hit)
                     self.tasks_main.put(fortress.change_color)
                     self.tasks_main.put(bullet.destroy)
@@ -213,11 +260,15 @@ class App():
             for col, rows in enumerate(self.invaders):
                 for row, invader in enumerate(rows):
                     if (
-                        invader is not None and
-                        (invader.xcor() - bullet.xcor())**2 + (invader.ycor() - bullet.ycor())**2 <= (invader.radius + bullet.radius)**2 and
-                        invader.heading() != bullet.heading()
+                        invader is not None
+                        and (invader.xcor() - bullet.xcor()) ** 2
+                        + (invader.ycor() - bullet.ycor()) ** 2
+                        <= (invader.radius + bullet.radius) ** 2
+                        and invader.heading() != bullet.heading()
                     ):
-                        logger.debug("Bullet hit invader (%s, %s)", bullet.xcor(), bullet.ycor())
+                        logger.debug(
+                            "Bullet hit invader (%s, %s)", bullet.xcor(), bullet.ycor()
+                        )
                         self.tasks_main.put(invader.destroy)
                         self.tasks_main.put(bullet.destroy)
                         self.to_remove.bullets.add(i)
@@ -225,11 +276,14 @@ class App():
                         self.tasks_main.put(self.game_score.update)
                         self.to_remove.invaders.add((col, row))
             for n, other in enumerate(self.bullets):
-                if (
-                    (other.xcor() - bullet.xcor())**2 + (other.ycor() - bullet.ycor())**2 <= (other.radius + bullet.radius)**2 and
-                    other.heading() != bullet.heading()
-                ):
-                    logger.debug("Bullet hit bullet (%s, %s)", bullet.xcor(), bullet.ycor())
+                if (other.xcor() - bullet.xcor()) ** 2 + (
+                    other.ycor() - bullet.ycor()
+                ) ** 2 <= (
+                    other.radius + bullet.radius
+                ) ** 2 and other.heading() != bullet.heading():
+                    logger.debug(
+                        "Bullet hit bullet (%s, %s)", bullet.xcor(), bullet.ycor()
+                    )
                     self.tasks_main.put(other.destroy)
                     self.tasks_main.put(bullet.destroy)
                     self.to_remove.bullets.add(i)
@@ -237,13 +291,15 @@ class App():
             if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(bullet.destroy)
-                    
-    def check_lifes_left(self,) -> bool:
+
+    def check_lifes_left(
+        self,
+    ) -> bool:
         if self.game_lifes.value <= 0:
             logger.info("User lost all life points")
             return False
         return True
-            
+
     def check_invaders_win(self) -> bool:
         for column in self.invaders:
             for row in column:
@@ -251,13 +307,13 @@ class App():
                     if row.ycor() <= -280:
                         return True
         return False
-    
+
     ### UPDATE GAME STATE ###
     def increase_game_speed(self) -> None:
         self.cooldown_bullet_movement -= 0.001
         self.cooldown_invaders_movement -= 0.03
         self.cooldown_user_shoot -= 0.009
-    
+
     def increase_level(self) -> None:
         if self.game_level_up:
             self.game_level_up = False
@@ -268,7 +324,7 @@ class App():
             self.tasks_main.put(self.game_level.update)
             self.tasks.put(self.increase_game_speed)
             logger.debug("Updated level")
-            
+
     def game_over(self) -> None:
         logger.info("Game over.")
         GameOverLabel()
@@ -278,18 +334,25 @@ class App():
             if item in ("invaders",):
                 lst = [
                     [
-                        item for row, item in enumerate(rows) if (column, row) not in self.to_remove.invaders
-                    ] for column, rows in enumerate(self.invaders) 
+                        item
+                        for row, item in enumerate(rows)
+                        if (column, row) not in self.to_remove.invaders
+                    ]
+                    for column, rows in enumerate(self.invaders)
                 ]
             else:
-                lst = [ obj for i, obj in enumerate(getattr(self, item)) if i not in getattr(self.to_remove, item)]
+                lst = [
+                    obj
+                    for i, obj in enumerate(getattr(self, item))
+                    if i not in getattr(self.to_remove, item)
+                ]
             rlock.acquire()
             setattr(self, item, lst)
             rlock.release()
             rlock.acquire()
             getattr(self.to_remove, item).clear()
             rlock.release()
-        
+
     def stop(self) -> None:
         logger.info("Stopping game...")
         self.run = False

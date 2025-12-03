@@ -12,7 +12,8 @@ logger.setLevel(logging.INFO)
 high_score_path = (Path(__file__).parent / Path("..", "data", "highscore")).resolve()
 with suppress(FileExistsError):
     high_score_path.mkdir(parents=True)
-        
+
+
 def main():
     logger.info("Starting game...")
     app = App()
@@ -25,7 +26,7 @@ def main():
             app.game_high_score.update()
             logger.debug("Set high score")
         logger.debug("Searching for stored high score is done.")
-            
+
     count_down = CountDownLabel()
     values = (3, 2, 1, "Go")
     values_iter = iter(values)
@@ -36,9 +37,12 @@ def main():
     app.tasks_main.put(count_down.hide)
     while app.tasks_main.qsize() > 0:
         perform_tasks(app.tasks_main)
-        sleep(0.01)
+        sleep(0.001)
     logger.info("Starting thread with tasks...")
-    th = threading.Thread(target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)), name="tasks")
+    th = threading.Thread(
+        target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)),
+        name="tasks",
+    )
     th.start()
     logger.info("Start main thread...")
     while app.run:
@@ -65,6 +69,7 @@ def main():
             f.write(str(app.game_score.value))
             logger.debug("New high score is stored")
     logger.info("Saving high score... is done.")
-    
+
+
 if __name__ == "__main__":
     main()
