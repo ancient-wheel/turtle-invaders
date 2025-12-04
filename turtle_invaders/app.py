@@ -7,26 +7,43 @@ from dataclasses import dataclass, field
 from queue import Queue
 from collections.abc import Callable
 import threading
-from enum import IntEnum
 from spaceships import SpaceShip, Invader
 from scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
 from fortresses import Fortress
 from types_ import numeric
-from constants import Screen
+from constants import Screen, InvadersMovementDirection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 rlock = threading.RLock()
 
 
-def cyclic_execution(fn: Callable[[], None], app: App) -> None:
+def run_in_loop(fn: Callable[[], None], app: App) -> None:
+    """Call a function in a loop as long as attribute App.run is True
+    Used to run a addition thread.
+
+    Keyword arguments:
+    argument -- description
+        fn (Callable): function
+        app (App): application
+    Return:
+        None
+    """
     while app.run:
         fn()
         sleep(0.001)
     logger.info("Stop cyclic_execution with ExitException.")
 
 
-def perform_tasks(queue: Queue) -> None:
+def perform_task_from(queue: Queue) -> None:
+    """Get a single task from a queue and call it.
+
+    Keyword arguments:
+    argument -- description
+        queue (Queue): queue to get task
+    Return: return_description
+        None
+    """
     if queue.qsize() > 0:
         task = queue.get()
         task()
@@ -38,15 +55,6 @@ class ItemsToRemove:
     bullets: set[int] = field(default_factory=set)
     invaders: set[tuple[int, int]] = field(default_factory=set)
     fortresses: set[int] = field(default_factory=set)
-
-
-class StopThreadException(Exception):
-    pass
-
-
-class InvadersMovementDirection(IntEnum):
-    LEFT = -1
-    RIGHT = 1
 
 
 class App:
@@ -97,25 +105,51 @@ class App:
             ),
             "Right",
         )
-        self.screen.onkey(self.user_shoot, "space")
+        self.screen.onkey(self.handle_user_shooting, "space")
         self.screen.onkey(self.stop, "q")
 
-    ### INITIALIZATION ###
-    def initialize_invaders(self, start_y_cor: numeric = 300, rows: int = 6) -> None:
-        START_X = int(Screen.WIDTH / 2 - 30)
+    # INITIALIZATION
+    def initialize_invaders(self, top_row_y: numeric = 300, num_rows: int = 6) -> None:
+        """Create instances of type Invaders. Fill screen with "enimies".
+        <top_row_y> coresponds to the y coordinate of the top row. Number of rows is
+        defined by parameter <num_rows>. <num_rows> must be a positiv integer.
+
+        Keyword arguments:
+        argument -- description
+            top_row_y (numeric): Y coordinate for highes row is bots
+            num_rows (int): number of rows
+        Return: return_description
+            None
+        """
+
+        if num_rows < 0:
+            raise ValueError("Parameter num_rows must be a positive integer.")
+        START_X = Screen.LEFT_LIMIT_FOR_OBJECTS
         END_X = int(Screen.WIDTH / 4)
         self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.invaders = [
-            [Invader(x, start_y_cor - i * 40) for i in range(rows)]
-            for x in range(-START_X, END_X, 40)
+            [Invader(x, top_row_y - i * 40) for i in range(num_rows)]
+            for x in range(START_X, END_X, 40)
         ]
 
-    def initialize_fortresses(self, y: numeric, number: int = 4) -> None:
-        if number < 0:
+    def initialize_fortresses(self, y: numeric, amount: int = 4) -> None:
+        """Create instances of type Fortress building a secure shelter for user.
+        Parameter <y> set a coordinate at which <amount> of instances will be
+        positioned. <amount> must be positive integer.
+
+        Keyword arguments:
+        argument -- description
+            y (numeric): coordinate to place fortresses
+            amount (int): amount of fortresses.
+        Return: return_description
+            None
+        """
+
+        if amount < 0:
             raise ValueError(
-                f"Parameter must be greater or equal null. Given: {number}."
+                f"Parameter must be greater or equal null. Given: {amount}."
             )
-        distance = int(Screen.WIDTH / (number + 1))
+        distance = int(Screen.WIDTH / (amount + 1))
         self.fortresses = [
             Fortress(x, y)
             for x in range(
@@ -125,12 +159,24 @@ class App:
             )
         ]
 
-    def initialize_fortressesV2(self, y: numeric, number: int = 4) -> None:
-        if number < 0:
+    def initialize_fortressesV2(self, y: numeric, amount: int = 4) -> None:
+        """Create instances of type Fortress building a secure shelter for user.
+        Parameter <y> set a coordinate at which <amount> of instances will be
+        positioned. <amount> must be positive integer.
+
+        Keyword arguments:
+        argument -- description
+            y (numeric): coordinate to place fortresses
+            amount (int): amount of fortresses.
+        Return: return_description
+            None
+        """
+
+        if amount < 0:
             raise ValueError(
-                f"Parameter must be greater or equal null. Given: {number}."
+                f"Parameter must be greater or equal null. Given: {amount}."
             )
-        distance = int(Screen.WIDTH / (number + 1))
+        distance = int(Screen.WIDTH / (amount + 1))
         self.fortresses = []
         for x in range(
             int(Screen.LEFT_LIMIT_FOR_OBJECTS) + distance,
@@ -140,7 +186,16 @@ class App:
             self.fortresses.append(Fortress(x - Fortress.radius, y))
             self.fortresses.append(Fortress(x + Fortress.radius, y))
 
-    def reset_bullets(self) -> None:
+    def remove_bullets(self) -> None:
+        """Remove all bullets on the screen.
+        Method is thread safe.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         if len(self.bullets) > 0:
             logger.debug("Reset list of bullets")
             [self.tasks_main.put(bullet.destroy) for bullet in self.bullets]
@@ -148,10 +203,23 @@ class App:
             self.to_remove.bullets.update([i for i in range(len(self.bullets))])
             rlock.release()
 
-    ### MOVEMENTS ###
-    def move_invaders(
-        self, sideward_step: numeric = 15, forward_step: numeric = 30
-    ) -> None:
+    # MOVEMENTS
+    def move_invaders(self, sidestep: numeric = 15, forward_step: numeric = 30) -> None:
+        """Handle movement of invaders on the screen.
+        Paramers define length of each movement for all objects. Invaders move from
+        left to right until the screen boarder. Then they step towards the user and
+        change movement direction.
+
+        Method has a colddown.
+
+        Keyword arguments:
+        argument -- description
+            sidestep (numeric): length of the sidestep
+            forward_step (numeric): length of the forward step
+        Return: return_description
+            None
+        """
+
         if (
             perf_counter() - self.cooldown_invaders_last_move
             < self.cooldown_invaders_movement
@@ -177,12 +245,12 @@ class App:
             return
         if (
             Screen.LEFT_LIMIT_FOR_OBJECTS
-            < x + sideward_step * direction
+            < x + sidestep * direction
             < Screen.RIGHT_LIMIT_FOR_OBJECTS
         ):
             [
                 [
-                    item.teleport(item.xcor() + sideward_step * direction, item.ycor())
+                    item.teleport(item.xcor() + sidestep * direction, item.ycor())
                     for item in column
                     if item is not None
                 ]
@@ -200,6 +268,17 @@ class App:
             ]
 
     def move_bullets(self) -> None:
+        """Handle movements of the bullets on the screen.
+        Step length for all bullets is set to 1.
+
+        Method has a colddown.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         if (
             perf_counter() - self.cooldown_bullet_last_move
             < self.cooldown_bullet_movement
@@ -208,8 +287,18 @@ class App:
         self.cooldown_bullet_last_move = perf_counter()
         [bullet.move(1) for bullet in self.bullets]
 
-    ### SHOOTING ###
-    def invaders_shoot(self) -> None:
+    # SHOOTING
+    def handle_invaders_shooting(self) -> None:
+        """Make invaders to shoot automaticaly.
+        Find random invader in the top row and let it shoot. Shoots have a cooldown.
+        Method is thread safe.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         if (
             perf_counter() - self.cooldown_invaders_last_shoot
             < self.cooldown_invaders_shoot
@@ -224,15 +313,36 @@ class App:
                 self.cooldown_invaders_last_shoot = perf_counter()
                 return
 
-    def user_shoot(self, time_interval: numeric = 0.5) -> None:
+    def handle_user_shooting(self, time_interval: numeric = 0.5) -> None:
+        """Handle user's shooting process thread safe.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         if perf_counter() - self.cooldown_user_last_shoot > time_interval:
             rlock.acquire()
             self.bullets.append(self.user.shoot())
             rlock.release()
             self.cooldown_user_last_shoot = perf_counter()
 
-    ### CHECKS ###
-    def check_collisions(self) -> None:
+    # CHECKS
+    def handle_bullets_collisions(self, bullets_destroy_bullets: bool = False) -> None:
+        """Handle bullet's collisions.
+        If a distance between object and bullet is closer then radius of both objects,
+        then application assumes a collision. Bullets and invaders disappear, user's and
+        fortresses life points reduses. Parameter <bullets_destroy_bullets> configurates
+        behaviour of the bullets when they are close to each other.
+
+        Keyword arguments:
+        argument -- description
+            bullets_destroy_bullets (bool): flag
+        Return: return_description
+            None
+        """
+
         for i, bullet in enumerate(self.bullets):
             if i in self.to_remove.bullets:
                 continue
@@ -245,7 +355,7 @@ class App:
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
-                self.tasks.put(self.reset_bullets)
+                self.tasks.put(self.remove_bullets)
             for fortress in self.fortresses:
                 if (fortress.xcor() - bullet.xcor()) ** 2 + (
                     fortress.ycor() - bullet.ycor()
@@ -288,48 +398,93 @@ class App:
                     self.tasks_main.put(bullet.destroy)
                     self.to_remove.bullets.add(i)
                     self.to_remove.bullets.add(n)
-            if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
-                self.to_remove.bullets.add(i)
-                self.tasks_main.put(bullet.destroy)
+            if bullets_destroy_bullets:
+                if (
+                    bullet.ycor() < -Screen.HEIGHT / 2
+                    or bullet.ycor() > Screen.HEIGHT / 2
+                ):
+                    self.to_remove.bullets.add(i)
+                    self.tasks_main.put(bullet.destroy)
 
     def check_lifes_left(
         self,
     ) -> bool:
+        """Method checks that user have enough life points to continue game.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            Returns True when user have more then 0 life points otherwise False.
+        """
+
         if self.game_lifes.value <= 0:
             logger.info("User lost all life points")
             return False
         return True
 
-    def check_invaders_win(self) -> bool:
+    def check_invaders_pass(self, y_cor: numeric = -280) -> bool:
+        """Methode checks if invaders pass certain y coordinate and win. Coordinate is
+        defined by parameter <y_cor>.
+
+        Keyword arguments:
+        argument -- description
+            y_cor (numeric): cordinate that invaders must pass to win the game
+        Return: return_description
+            Returns True when first invader passed the <y_cor> otherwise False.
+        """
+
         for column in self.invaders:
             for row in column:
                 if row is not None:
-                    if row.ycor() <= -280:
+                    if row.ycor() <= y_cor:
                         return True
         return False
 
-    ### UPDATE GAME STATE ###
-    def increase_game_speed(self) -> None:
+    # UPDATE GAME STATE
+    def reduce_cooldown(self) -> None:
+        """Change cooldown values so the game seems to run faster.
+        
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+        
         self.cooldown_bullet_movement -= 0.001
         self.cooldown_invaders_movement -= 0.03
         self.cooldown_user_shoot -= 0.009
 
-    def increase_level(self) -> None:
+    def handle_level_up(self) -> None:
+        """Orcastrate tasks that are neccessary to start next game level.
+        
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+        
         if self.game_level_up:
             self.game_level_up = False
             logger.debug("Updating level")
-            self.tasks.put(self.reset_bullets)
+            self.tasks.put(self.remove_bullets)
             self.tasks.put((lambda: self.game_level.increase(1)))
-            self.tasks_main.put(self.initialize_invaders)
             self.tasks_main.put(self.game_level.update)
-            self.tasks.put(self.increase_game_speed)
+            self.tasks_main.put(self.initialize_invaders)
+            self.tasks.put(self.reduce_cooldown)
             logger.debug("Updated level")
 
-    def game_over(self) -> None:
-        logger.info("Game over.")
+    def show_game_over_label(self) -> None:
+        """Show "GAME OVER" laber on the screen
+        
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+        
         GameOverLabel()
 
-    def remove_items(self) -> None:
+    def remove_destroy_objects(self) -> None:
         for item in ("fortresses", "bullets", "invaders"):
             if item in ("invaders",):
                 lst = [

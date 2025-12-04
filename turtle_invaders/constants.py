@@ -9,8 +9,13 @@ class ObjectDirection(IntEnum):
     SOUTH = 270
 
 
+class InvadersMovementDirection(IntEnum):
+    LEFT = -1
+    RIGHT = 1
+
+
 class Screen(IntEnum):
     WIDTH = 600
     HEIGHT = 800
-    LEFT_LIMIT_FOR_OBJECTS = int(-WIDTH / 2 + 5)
+    LEFT_LIMIT_FOR_OBJECTS = int(-WIDTH / 2 + 15)
     RIGHT_LIMIT_FOR_OBJECTS = int(WIDTH / 2 - 15)

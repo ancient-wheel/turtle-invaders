@@ -3,7 +3,7 @@ from contextlib import suppress
 import threading
 from time import sleep
 from pathlib import Path
-from app import App, cyclic_execution, perform_tasks
+from app import App, run_in_loop, perform_task_from
 from scoreboard import CountDownLabel
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
@@ -36,31 +36,31 @@ def main():
         app.tasks_main.put((lambda: sleep(1)))
     app.tasks_main.put(count_down.hide)
     while app.tasks_main.qsize() > 0:
-        perform_tasks(app.tasks_main)
+        perform_task_from(app.tasks_main)
         sleep(0.001)
     logger.info("Starting thread with tasks...")
     th = threading.Thread(
-        target=(lambda: cyclic_execution(lambda: perform_tasks(app.tasks), app)),
+        target=(lambda: run_in_loop(lambda: perform_task_from(app.tasks), app)),
         name="tasks",
     )
     th.start()
     logger.info("Start main thread...")
     while app.run:
-        app.invaders_shoot()
+        app.handle_invaders_shooting()
         app.move_invaders()
         app.move_bullets()
-        app.check_collisions()
-        app.tasks.put(app.remove_items)
-        app.increase_level()
-        perform_tasks(app.tasks_main)
-        if app.check_invaders_win() or not app.check_lifes_left():
-            app.game_over()
+        app.handle_bullets_collisions()
+        app.tasks.put(app.remove_destroy_objects)
+        app.handle_level_up()
+        perform_task_from(app.tasks_main)
+        if app.check_invaders_pass() or not app.check_lifes_left():
+            app.show_game_over_label()
             app.stop()
         app.screen.update()
         sleep(0.001)
     logger.info("Main thread is stopping...")
     logger.debug("Tasks thread is still alive? %s", th.is_alive())
-    if app.check_invaders_win() or not app.check_lifes_left():
+    if app.check_invaders_pass() or not app.check_lifes_left():
         app.screen.exitonclick()
     logger.info("Saving high score...")
     if app.game_score.value > app.game_high_score.value:
