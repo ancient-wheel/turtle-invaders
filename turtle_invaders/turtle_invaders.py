@@ -50,7 +50,7 @@ def main():
         app.move_invaders()
         app.move_bullets()
         app.handle_bullets_collisions()
-        app.tasks.put(app.remove_destroy_objects)
+        app.tasks.put(app.remove_destroyed_objects)
         app.handle_level_up()
         perform_task_from(app.tasks_main)
         if app.check_invaders_pass() or not app.check_lifes_left():

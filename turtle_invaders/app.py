@@ -443,26 +443,26 @@ class App:
     # UPDATE GAME STATE
     def reduce_cooldown(self) -> None:
         """Change cooldown values so the game seems to run faster.
-        
+
         Keyword arguments:
         argument -- description
         Return: return_description
             None
         """
-        
+
         self.cooldown_bullet_movement -= 0.001
         self.cooldown_invaders_movement -= 0.03
         self.cooldown_user_shoot -= 0.009
 
     def handle_level_up(self) -> None:
         """Orcastrate tasks that are neccessary to start next game level.
-        
+
         Keyword arguments:
         argument -- description
         Return: return_description
             None
         """
-        
+
         if self.game_level_up:
             self.game_level_up = False
             logger.debug("Updating level")
@@ -475,16 +475,24 @@ class App:
 
     def show_game_over_label(self) -> None:
         """Show "GAME OVER" laber on the screen
-        
+
         Keyword arguments:
         argument -- description
         Return: return_description
             None
         """
-        
+
         GameOverLabel()
 
-    def remove_destroy_objects(self) -> None:
+    def remove_destroyed_objects(self) -> None:
+        """Remove marked objecsts from screen.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         for item in ("fortresses", "bullets", "invaders"):
             if item in ("invaders",):
                 lst = [
