@@ -10,6 +10,9 @@ dependencies = []
 pythonpath = ["turtle_invaders"]
 
 [dependency-groups]
+bandit = [
+    "bandit>=1.9.2",
+]
 dev = [
     "pytest>=9.0.1",
     "pytest-coverage>=0.0",
