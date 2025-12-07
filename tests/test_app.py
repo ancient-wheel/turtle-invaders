@@ -9,6 +9,7 @@ from turtle_invaders.app import (
     run_in_loop,
     perform_task_from,
     write_json,
+    read_json,
 )
 
 
@@ -73,17 +74,28 @@ def dictionary_fixture() -> dict[str, int]:
 
 
 def test_write_json_json_file(dictionary_fixture, json_file_fixture):
-    file_path = Path(json_file_fixture.name)
-    write_json(dictionary_fixture, file_path)
-    with open(file_path, "r") as f:
+    write_json(dictionary_fixture, json_file_fixture.name)
+    with open(json_file_fixture.name, "r") as f:
         result = json.load(f)
         assert dictionary_fixture == result
 
 
 def test_write_json_txt_file(dictionary_fixture, txt_file_fixture):
-    file_path = Path(txt_file_fixture.name)
-    write_json(dictionary_fixture, file_path)
+    write_json(dictionary_fixture, txt_file_fixture.name)
     json_path = Path(txt_file_fixture.name).with_suffix(".json")
     with open(json_path, "r") as f:
         result = json.load(f)
         assert dictionary_fixture == result
+
+
+def test_read_json_missing_file():
+    result = read_json("test.json")
+    assert result == {}
+
+
+def test_read_json(dictionary_fixture, json_file_fixture):
+    with open(json_file_fixture.name, "w") as f:
+        json.dump(dictionary_fixture, f)
+    json_path = Path(json_file_fixture.name)
+    result = read_json(json_path)
+    assert result == dictionary_fixture
