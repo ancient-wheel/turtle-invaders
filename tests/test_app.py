@@ -1,14 +1,20 @@
-import pytest
-from collections.abc import Callable
-from turtle_invaders.app import run_in_loop, App, perform_task_from
+import json
+from pathlib import Path
 from queue import Queue
 from time import perf_counter, sleep
 import threading
-from dataclasses import dataclass, field
+import pytest
+import tempfile
+from turtle_invaders.app import (
+    run_in_loop,
+    perform_task_from,
+    write_json,
+)
 
 
 class AppFixture:
     run: bool = True
+
 
 def test_run_in_loop() -> None:
     counter = 0
@@ -29,7 +35,7 @@ def test_run_in_loop() -> None:
             app.run = False
             break
         sleep(0.1)
-    assert counter in (4, 5,6)
+    assert counter in (4, 5, 6)
 
 
 def test_perform_task_from() -> None:
@@ -44,3 +50,40 @@ def test_perform_task_from() -> None:
     perform_task_from(test_queue)
     assert test_done is True
     assert test_queue.qsize() == 0
+
+
+@pytest.fixture
+def json_file_fixture():
+    with tempfile.NamedTemporaryFile(suffix=".json", delete_on_close=False) as file:
+        return file
+
+
+@pytest.fixture
+def txt_file_fixture():
+    with tempfile.NamedTemporaryFile(suffix=".txt") as file:
+        return file
+
+
+@pytest.fixture
+def dictionary_fixture() -> dict[str, int]:
+    return {
+        "1": 933,
+        "2": 20,
+    }
+
+
+def test_write_json_json_file(dictionary_fixture, json_file_fixture):
+    file_path = Path(json_file_fixture.name)
+    write_json(dictionary_fixture, file_path)
+    with open(file_path, "r") as f:
+        result = json.load(f)
+        assert dictionary_fixture == result
+
+
+def test_write_json_txt_file(dictionary_fixture, txt_file_fixture):
+    file_path = Path(txt_file_fixture.name)
+    write_json(dictionary_fixture, file_path)
+    json_path = Path(txt_file_fixture.name).with_suffix(".json")
+    with open(json_path, "r") as f:
+        result = json.load(f)
+        assert dictionary_fixture == result
