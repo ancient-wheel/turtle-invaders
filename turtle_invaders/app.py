@@ -92,17 +92,27 @@ def write_json(dict_: dict[str, int], path: str | Path) -> None:
         logger.debug("New high score is stored")
 
 
-def add_score_to(high_score: dict[str, int], score: int) -> dict[str, int]:
-    today = datetime.date.today().isoformat()
-    if len(high_score) < 10:
-        high_score[today] = score
+def add_score(high_score_dict: dict[str, int], score: int) -> dict[str, int]:
+    """Add score to a high score list. List contains best ten results.
+
+    Keyword arguments:
+    argument -- description
+        high_score_dict (dict[str, int]): existing high scores
+        score (int): new score to add
+    Return: return_description
+        dict[str, int]: updated high score dictionary
+    """
+
+    today = datetime.datetime.now().isoformat()
+    if len(high_score_dict) < 10:
+        high_score_dict[today] = score
     else:
-        min_date = min(high_score, key=lambda k: high_score[k])
-        min_value = high_score[min_date]
+        min_date = min(high_score_dict, key=lambda k: high_score_dict[k])
+        min_value = high_score_dict[min_date]
         if score > min_value:
-            high_score.pop(min_date)
-            high_score[today] = score
-    return high_score
+            high_score_dict.pop(min_date)
+            high_score_dict[today] = score
+    return high_score_dict
 
 
 @dataclass
