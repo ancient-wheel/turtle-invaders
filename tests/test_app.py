@@ -3,6 +3,7 @@ from pathlib import Path
 from queue import Queue
 from time import perf_counter, sleep
 import threading
+from typing import Protocol
 import pytest
 import tempfile
 import datetime as dt
@@ -15,13 +16,22 @@ from turtle_invaders.app import (
 )
 
 
-class AppFixture:
+class AppProtocol(Protocol):
     run: bool = True
 
 
-def test_run_in_loop() -> None:
+class FileProcotol(Protocol):
+    name: str
+
+
+@pytest.fixture
+def app_fixture() -> AppProtocol:
+    return AppProtocol()
+
+
+def test_run_in_loop(app_fixture: AppProtocol) -> None:
     counter = 0
-    app = AppFixture()
+    app = app_fixture
     test_start = perf_counter()
     start_time = perf_counter()
 
@@ -56,13 +66,13 @@ def test_perform_task_from() -> None:
 
 
 @pytest.fixture
-def json_file_fixture():
+def json_file_fixture() -> FileProcotol:
     with tempfile.NamedTemporaryFile(suffix=".json", delete_on_close=False) as file:
         return file
 
 
 @pytest.fixture
-def txt_file_fixture():
+def txt_file_fixture() -> FileProcotol:
     with tempfile.NamedTemporaryFile(suffix=".txt") as file:
         return file
 
@@ -75,14 +85,20 @@ def dictionary_fixture() -> dict[str, int]:
     }
 
 
-def test_write_json_json_file(dictionary_fixture, json_file_fixture):
+def test_write_json_json_file(
+    dictionary_fixture: dict[str, int],
+    json_file_fixture: FileProcotol,
+) -> None:
     write_json(dictionary_fixture, json_file_fixture.name)
     with open(json_file_fixture.name, "r") as f:
         result = json.load(f)
         assert dictionary_fixture == result
 
 
-def test_write_json_txt_file(dictionary_fixture, txt_file_fixture):
+def test_write_json_txt_file(
+    dictionary_fixture: dict[str, int],
+    txt_file_fixture: FileProcotol,
+) -> None:
     write_json(dictionary_fixture, txt_file_fixture.name)
     json_path = Path(txt_file_fixture.name).with_suffix(".json")
     with open(json_path, "r") as f:
@@ -90,12 +106,15 @@ def test_write_json_txt_file(dictionary_fixture, txt_file_fixture):
         assert dictionary_fixture == result
 
 
-def test_read_json_missing_file():
+def test_read_json_missing_file() -> None:
     result = read_json("test.json")
     assert result == {}
 
 
-def test_read_json(dictionary_fixture, json_file_fixture):
+def test_read_json(
+    dictionary_fixture: dict[str, int],
+    json_file_fixture: fileProcotol,
+) -> None:
     with open(json_file_fixture.name, "w") as f:
         json.dump(dictionary_fixture, f)
     json_path = Path(json_file_fixture.name)
@@ -118,7 +137,7 @@ def high_score_fixture() -> dict[str, int]:
     }
 
 
-def test_add_score(high_score_fixture):
+def test_add_score(high_score_fixture: dict[str, int]) -> None:
     # Test adding a score when there are less than 10 scores
     updated_scores = add_score(high_score_fixture, 85)
     assert len(updated_scores) == 10
