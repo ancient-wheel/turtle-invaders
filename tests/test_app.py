@@ -26,12 +26,11 @@ class FileProcotol(Protocol):
 
 @pytest.fixture
 def app_fixture() -> AppProtocol:
-    return AppProtocol()  # type: ignore
+    return AppProtocol  # type: ignore
 
 
 def test_run_in_loop(app_fixture: AppProtocol) -> None:
     counter = 0
-    app = app_fixture
     test_start = perf_counter()
     start_time = perf_counter()
 
@@ -41,11 +40,11 @@ def test_run_in_loop(app_fixture: AppProtocol) -> None:
             counter += 1
             start_time = perf_counter()
 
-    thread = threading.Thread(target=run_in_loop, args=(increase_counter, app))
+    thread = threading.Thread(target=run_in_loop, args=(increase_counter, app_fixture))
     thread.start()
     while True:
         if perf_counter() - test_start >= 5:
-            app.run = False
+            app_fixture.run = False
             break
         sleep(0.1)
     assert counter in (4, 5, 6)

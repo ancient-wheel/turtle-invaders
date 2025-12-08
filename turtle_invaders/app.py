@@ -11,11 +11,11 @@ from queue import Queue
 from collections.abc import Callable
 import threading
 from pathlib import Path
-from spaceships import SpaceShip, Invader
-from scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
-from fortresses import Fortress
-from types_ import numeric
-from constants import Screen, InvadersMovementDirection
+from .spaceships import SpaceShip, Invader
+from .scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
+from .fortresses import Fortress
+from .types_ import numeric
+from .constants import Screen, InvadersMovementDirection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -1,8 +1,8 @@
 from __future__ import annotations
 import turtle as t
-from bullet import Bullet
-from constants import ObjectDirection
-from types_ import numeric
+from .bullet import Bullet
+from .constants import ObjectDirection
+from .types_ import numeric
 
 
 class SpaceShip(t.Turtle):
