@@ -5,11 +5,13 @@ from time import perf_counter, sleep
 import threading
 import pytest
 import tempfile
+import datetime as dt
 from turtle_invaders.app import (
     run_in_loop,
     perform_task_from,
     write_json,
     read_json,
+    add_score
 )
 
 
@@ -68,8 +70,8 @@ def txt_file_fixture():
 @pytest.fixture
 def dictionary_fixture() -> dict[str, int]:
     return {
-        "1": 933,
-        "2": 20,
+        dt.date(2024, 10, 3).isoformat(): 105,
+        dt.date(2023, 4, 6).isoformat(): 20,
     }
 
 
@@ -99,3 +101,32 @@ def test_read_json(dictionary_fixture, json_file_fixture):
     json_path = Path(json_file_fixture.name)
     result = read_json(json_path)
     assert result == dictionary_fixture
+    
+@pytest.fixture
+def high_score_fixture() -> dict[str, int]:
+    return {
+        "2024-10-01T12:00:00.000000": 150,
+        "2024-09-30T13:59:00.000000": 120,
+        "2024-09-29T14:01:00.000000": 110,
+        "2024-09-28T23:00:00.000000": 100,
+        "2024-09-27T08:01:00.000000": 90,
+        "2024-09-26T10:04:00.000000": 80,
+        "2024-09-25T11:33:00.000000": 70,
+        "2024-09-24T11:35:00.000000": 60,
+        "2024-09-23T20:00:00.000000": 50,
+    }
+    
+def test_add_score(high_score_fixture):
+    # Test adding a score when there are less than 10 scores
+    updated_scores = add_score(high_score_fixture, 85)
+    assert len(updated_scores) == 10
+    assert any(score == 85 for score in updated_scores.values())
+    assert any(score == 50 for score in updated_scores.values())
+
+    # Test adding a score when there are already 10 scores
+    # Adding a higher score
+    updated_scores_10 = add_score(updated_scores.copy(), 95)
+    assert all(score != 50 for score in updated_scores_10.values())
+    # Adding a lower score
+    updated_scores_11 = add_score(updated_scores.copy(), 45)
+    assert updated_scores == updated_scores_11

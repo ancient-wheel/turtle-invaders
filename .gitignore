@@ -223,4 +223,5 @@ __marimo__/
 # view templates for tests
 templates_tests/
 
-highscore
+# user data
+data/
