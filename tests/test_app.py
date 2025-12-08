@@ -11,7 +11,7 @@ from turtle_invaders.app import (
     perform_task_from,
     write_json,
     read_json,
-    add_score
+    add_score,
 )
 
 
@@ -101,7 +101,8 @@ def test_read_json(dictionary_fixture, json_file_fixture):
     json_path = Path(json_file_fixture.name)
     result = read_json(json_path)
     assert result == dictionary_fixture
-    
+
+
 @pytest.fixture
 def high_score_fixture() -> dict[str, int]:
     return {
@@ -115,7 +116,8 @@ def high_score_fixture() -> dict[str, int]:
         "2024-09-24T11:35:00.000000": 60,
         "2024-09-23T20:00:00.000000": 50,
     }
-    
+
+
 def test_add_score(high_score_fixture):
     # Test adding a score when there are less than 10 scores
     updated_scores = add_score(high_score_fixture, 85)
