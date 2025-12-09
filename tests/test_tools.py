@@ -121,32 +121,51 @@ def test_read_json(
     assert result == dictionary_fixture
 
 
+results_9 = {
+    "2024-10-01T12:00:00.000000": 150,
+    "2024-09-30T13:59:00.000000": 120,
+    "2024-09-29T14:01:00.000000": 110,
+    "2024-09-28T23:00:00.000000": 100,
+    "2024-09-27T08:01:00.000000": 90,
+    "2024-09-26T10:04:00.000000": 80,
+    "2024-09-25T11:33:00.000000": 70,
+    "2024-09-24T11:35:00.000000": 60,
+    "2024-09-23T20:00:00.000000": 50,
+}
+
+
 @pytest.fixture
-def high_score_fixture() -> dict[str, int]:
-    return {
-        "2024-10-01T12:00:00.000000": 150,
-        "2024-09-30T13:59:00.000000": 120,
-        "2024-09-29T14:01:00.000000": 110,
-        "2024-09-28T23:00:00.000000": 100,
-        "2024-09-27T08:01:00.000000": 90,
-        "2024-09-26T10:04:00.000000": 80,
-        "2024-09-25T11:33:00.000000": 70,
-        "2024-09-24T11:35:00.000000": 60,
-        "2024-09-23T20:00:00.000000": 50,
-    }
+def high_score_fixture_9() -> dict[str, int]:
+    return results_9
 
 
-def test_add_score(high_score_fixture: dict[str, int]) -> None:
+@pytest.fixture
+def high_score_fixture_10(high_score_fixture_9: dict[str, int]) -> dict[str, int]:
+    dict_ = dict(high_score_fixture_9)
+    dict_.update({"2024-09-22T19:45:55.00000": 85})
+    return dict_
+
+
+def test_add_score_less_10(high_score_fixture_9: dict[str, int]) -> None:
     # Test adding a score when there are less than 10 scores
-    updated_scores = add_score(high_score_fixture, 85)
+    updated_scores = add_score(high_score_fixture_9, 85)
     assert len(updated_scores) == 10
     assert any(score == 85 for score in updated_scores.values())
     assert any(score == 50 for score in updated_scores.values())
 
+
+def test_add_score_greater_10_and_higher_value(
+    high_score_fixture_10: dict[str, int],
+) -> None:
     # Test adding a score when there are already 10 scores
     # Adding a higher score
-    updated_scores_10 = add_score(updated_scores.copy(), 95)
+    updated_scores_10 = add_score(high_score_fixture_10, 95)
     assert all(score != 50 for score in updated_scores_10.values())
+
+
+def test_add_score_greater_10_and_lower_value(
+    high_score_fixture_10: dict[str, int],
+) -> None:
     # Adding a lower score
-    updated_scores_11 = add_score(updated_scores.copy(), 45)
-    assert updated_scores == updated_scores_11
+    updated_scores_11 = add_score(high_score_fixture_10, 45)
+    assert high_score_fixture_10 == updated_scores_11
