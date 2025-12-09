@@ -1,6 +1,6 @@
 import turtle as t
-from .types_ import numeric
-from .constants import ObjectDirection
+from turtle_invaders.types_ import numeric
+from turtle_invaders.constants import ObjectDirection
 
 
 class Bullet(t.Turtle):

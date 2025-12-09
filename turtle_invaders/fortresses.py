@@ -1,6 +1,6 @@
 import turtle as t
-from .constants import COLORS
-from .types_ import numeric
+from turtle_invaders.constants import COLORS
+from turtle_invaders.types_ import numeric
 
 
 class Fortress(t.Turtle):

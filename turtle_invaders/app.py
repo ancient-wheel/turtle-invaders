@@ -1,16 +1,33 @@
 from __future__ import annotations
+from contextlib import suppress
+from pathlib import Path
 import turtle as t
 import logging
-from time import perf_counter
+from time import perf_counter, sleep
 from random import randint
 from dataclasses import dataclass, field
 from queue import Queue
 import threading
-from .spaceships import SpaceShip, Invader
-from .scoreboard import Score, HighScore, LifeScore, Level, GameOverLabel
-from .fortresses import Fortress
-from .types_ import numeric
-from .constants import Screen, InvadersMovementDirection
+
+from turtle_invaders.tools import (
+    add_score,
+    perform_task_from,
+    read_json,
+    run_in_loop,
+    write_json,
+)
+from turtle_invaders.scoreboard import (
+    CountDownLabel,
+    GameOverLabel,
+    Score,
+    HighScore,
+    LifeScore,
+    Level,
+)
+from turtle_invaders.spaceships import SpaceShip, Invader
+from turtle_invaders.fortresses import Fortress
+from turtle_invaders.types_ import numeric
+from turtle_invaders.constants import Screen, InvadersMovementDirection
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +43,8 @@ class ItemsToRemove:
 
 
 class App:
+    run: bool = True
+
     def __init__(self):
         self.screen = t.Screen()
         self.screen.setup(width=Screen.WIDTH, height=Screen.HEIGHT)
@@ -46,7 +65,6 @@ class App:
         self.to_remove = ItemsToRemove()
         self.tasks = Queue()
         self.tasks_main = Queue()
-        self.run = True
         self.fortresses: list[Fortress]
         self.cooldown_user_shoot = 0.5
         self.cooldown_user_last_shoot = perf_counter() - 30
@@ -75,6 +93,10 @@ class App:
         )
         self.screen.onkey(self.handle_user_shooting, "space")
         self.screen.onkey(self.stop, "q")
+        self.high_score_path = (
+            Path(__file__).parent / Path("..", "data", "highscore.json")
+        ).resolve()
+        self.high_score_path.parent.mkdir(parents=True, exist_ok=True)
 
     # INITIALIZATION
     def initialize_invaders(self, top_row_y: numeric = 300, num_rows: int = 6) -> None:
@@ -485,5 +507,106 @@ class App:
             rlock.release()
 
     def stop(self) -> None:
+        """Stop all threads and quit application.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
         logger.info("Stopping game...")
         self.run = False
+
+    def start(self) -> None:
+        """Start application.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
+        logger.info("Starting game...")
+        self.load_high_score()
+        self.show_count_down()
+        logger.debug("Starting game... is done.")
+        self.run_additional_loop()
+        self.run_mainloop()
+        logger.info("Saving high score...")
+        self.save_high_score()
+        logger.debug("Saving high score... is done.")
+
+    def run_additional_loop(self) -> None:
+        """Run additional loop for handling tasks in separate thread.
+        This method must be called before main loop is started.
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+        """
+
+        logger.info("Starting additional loop for tasks...")
+        th = threading.Thread(
+            target=(lambda: run_in_loop(lambda: perform_task_from(self.tasks), self)),
+            name="tasks",
+        )
+        th.start()
+        logger.info("Addition loop runs: %s", th.is_alive())
+        if th.is_alive():
+            logger.info("Starting additional loop for tasks... is done.")
+        else:
+            logger.error("Starting additional loop for tasks... failed.")
+
+    def run_mainloop(self) -> None:
+        """Run main loop of the application.
+        Start additional loop before calling this method.
+        For running application call method start().
+
+        Keyword arguments:
+        argument -- description
+        Return: return_description
+            None
+        """
+
+        logger.info("Start main thread...")
+        while self.run:
+            self.handle_invaders_shooting()
+            self.move_invaders()
+            self.move_bullets()
+            self.handle_bullets_collisions()
+            self.tasks.put(self.remove_destroyed_objects)
+            self.handle_level_up()
+            perform_task_from(self.tasks_main)
+            if self.check_invaders_pass() or not self.check_lifes_left():
+                self.show_game_over_label()
+                self.stop()
+            self.screen.update()
+            sleep(0.001)
+        logger.info("Main thread is stopping...")
+
+    def load_high_score(self) -> None:
+        results = read_json(self.high_score_path)
+        max_score = None
+        with suppress(ValueError):
+            max_score = max(results.values())
+        self.game_high_score.value = max_score if max_score is not None else 0
+        self.tasks_main.put(self.game_high_score.update)
+
+    def show_count_down(self) -> None:
+        count_down = CountDownLabel()
+        values = (3, 2, 1, "Go")
+        values_iter = iter(values)
+        for _ in range(len(values)):
+            self.tasks_main.put((lambda: count_down.update(next(values_iter))))
+            self.tasks_main.put(self.screen.update)
+            self.tasks_main.put((lambda: sleep(1)))
+        self.tasks_main.put(count_down.hide)
+        while self.tasks_main.qsize() > 0:
+            perform_task_from(self.tasks_main)
+            sleep(0.001)
+
+    def save_high_score(self) -> None:
+        results = read_json(self.high_score_path)
+        new_results = add_score(results, self.game_score.value)
+        write_json(new_results, self.high_score_path)

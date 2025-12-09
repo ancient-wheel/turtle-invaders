@@ -1,25 +1,28 @@
 import json
 import logging
-import threading
 import datetime
 from contextlib import suppress
 from time import sleep
 from pathlib import Path
 from collections.abc import Callable
 from queue import Queue
-from .app import App
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
 
-def run_in_loop(fn: Callable[[], None], app: App) -> None:
+class FlagProtocol(Protocol):
+    run: bool
+
+
+def run_in_loop(fn: Callable[[], None], app: FlagProtocol) -> None:
     """Call a function in a loop as long as attribute App.run is True
     Used to run a addition thread.
 
     Keyword arguments:
     argument -- description
         fn (Callable): function
-        app (App): application
+        app (FlagProtocol): application
     Return:
         None
     """
