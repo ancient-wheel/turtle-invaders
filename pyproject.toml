@@ -8,7 +8,7 @@ dependencies = []
 
 [tool.pytest]
 testpaths = ["tests", "turtle_invaders"]
-addops = ["--import-mode=importlib"]
+addopts = ["--import-mode=importlib"]
 
 [dependency-groups]
 bandit = [
