@@ -431,18 +431,30 @@ class App:
         return False
 
     # UPDATE GAME STATE
-    def reduce_cooldown(self) -> None:
+    def reduce_cooldown(
+        self,
+        bullet_movement: float = 0.001,
+        inverders_movement: float = 0.03,
+        user_shoot: float = 0.009,
+    ) -> None:
         """Change cooldown values so the game seems to run faster.
 
-        Keyword arguments:
+        Arguments:
         argument -- description
+            bullet_movement (float): amount to reduce cooldown for bullet movement
+            inverders_movement (float): amount to reduce cooldown for invaders movement
+            user_shoot (float): amount to reduce cooldown for user shooting
         Return: return_description
             None
         """
 
-        self.cooldown_bullet_movement -= 0.001
-        self.cooldown_invaders_movement -= 0.03
-        self.cooldown_user_shoot -= 0.009
+        self.cooldown_bullet_movement += (
+            -bullet_movement if bullet_movement > 0 else bullet_movement
+        )
+        self.cooldown_invaders_movement += (
+            -inverders_movement if inverders_movement > 0 else inverders_movement
+        )
+        self.cooldown_user_shoot += -user_shoot if user_shoot > 0 else user_shoot
 
     def handle_level_up(self) -> None:
         """Orcastrate tasks that are neccessary to start next game level.
