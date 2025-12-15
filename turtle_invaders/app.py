@@ -375,26 +375,26 @@ class App:
                         self.tasks.put((lambda: self.game_score.increase(1)))
                         self.tasks_main.put(self.game_score.update)
                         self.to_remove.invaders.add((col, row))
-            for n, other in enumerate(self.bullets):
-                if (other.xcor() - bullet.xcor()) ** 2 + (
-                    other.ycor() - bullet.ycor()
-                ) ** 2 <= (
-                    other.radius + bullet.radius
-                ) ** 2 and other.heading() != bullet.heading():
-                    logger.debug(
-                        "Bullet hit bullet (%s, %s)", bullet.xcor(), bullet.ycor()
-                    )
-                    self.tasks_main.put(other.destroy)
-                    self.tasks_main.put(bullet.destroy)
-                    self.to_remove.bullets.add(i)
-                    self.to_remove.bullets.add(n)
             if bullets_destroy_bullets:
-                if (
-                    bullet.ycor() < -Screen.HEIGHT / 2
-                    or bullet.ycor() > Screen.HEIGHT / 2
-                ):
-                    self.to_remove.bullets.add(i)
-                    self.tasks_main.put(bullet.destroy)
+                for n, other in enumerate(self.bullets):
+                    if (other.xcor() - bullet.xcor()) ** 2 + (
+                        other.ycor() - bullet.ycor()
+                    ) ** 2 <= (
+                        other.radius + bullet.radius
+                    ) ** 2 and other.heading() != bullet.heading():
+                        logger.debug(
+                            "Bullet hit bullet (%s, %s)", bullet.xcor(), bullet.ycor()
+                        )
+                        self.tasks_main.put(other.destroy)
+                        self.tasks_main.put(bullet.destroy)
+                        self.to_remove.bullets.add(i)
+                        self.to_remove.bullets.add(n)
+            if (
+                bullet.ycor() < -Screen.HEIGHT / 2
+                or bullet.ycor() > Screen.HEIGHT / 2
+            ):
+                self.to_remove.bullets.add(i)
+                self.tasks_main.put(bullet.destroy)
 
     def check_lifes_left(
         self,
