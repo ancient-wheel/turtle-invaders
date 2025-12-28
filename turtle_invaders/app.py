@@ -389,10 +389,7 @@ class App:
                         self.tasks_main.put(bullet.destroy)
                         self.to_remove.bullets.add(i)
                         self.to_remove.bullets.add(n)
-            if (
-                bullet.ycor() < -Screen.HEIGHT / 2
-                or bullet.ycor() > Screen.HEIGHT / 2
-            ):
+            if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(bullet.destroy)
 
