@@ -1,5 +1,6 @@
 import pytest
 from tests.conftest import Bullet, Invader, App
+from time import perf_counter
 
 
 def test_initialize_invaders(app_fixture: App) -> None:
@@ -89,3 +90,14 @@ def test_collect_garbage(
     assert invader_fixture not in app_fixture.invaders[0]
     assert fortress_fixture not in app_fixture.fortresses
     assert len(app_fixture.garbage) == 0
+
+
+def test_handle_user_shooting(app_fixture: App) -> None:
+    app_fixture.handle_user_shooting()
+    assert len(app_fixture.bullets) == 1
+
+
+def test_handle_user_shooting_on_cooldown(app_fixture: App) -> None:
+    app_fixture.cooldown_user_last_shoot = perf_counter() + 10
+    app_fixture.handle_user_shooting()
+    assert len(app_fixture.bullets) == 0
