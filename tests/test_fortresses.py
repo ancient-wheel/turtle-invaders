@@ -18,13 +18,13 @@ type numeric = int | float
 
 @pytest.mark.parametrize("x, y", VALID_PARAMETERS)
 def test_parametrized_valid_fortness(x: numeric, y: numeric) -> None:
-    Fortress(x, y)
+    dut = Fortress(x, y)
 
 
 @pytest.mark.parametrize("x, y", INVALID_PARAMETERS)
 def test_fortress_str_2(x: numeric, y: numeric) -> None:
     with pytest.raises(TypeError):
-        Fortress(x, y)
+        dut = Fortress(x, y)
 
 
 def test_hit(fortress_fixture: Fortress) -> None:
