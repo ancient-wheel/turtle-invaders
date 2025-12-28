@@ -5,7 +5,6 @@ import turtle as t
 import logging
 from time import perf_counter, sleep
 from random import randint
-from dataclasses import dataclass, field
 from queue import Queue
 import threading
 
@@ -35,13 +34,6 @@ logger.setLevel(logging.INFO)
 rlock = threading.RLock()
 
 
-@dataclass
-class Garbage:
-    bullets: set[int] = field(default_factory=set)
-    invaders: set[tuple[int, int]] = field(default_factory=set)
-    fortresses: set[int] = field(default_factory=set)
-
-
 class App:
     run: bool = True
 
@@ -62,7 +54,7 @@ class App:
         self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.initialize_invaders()
         self.bullets = []
-        self.garbage = Garbage()
+        self.garbage = set()
         self.tasks = Queue()
         self.tasks_main = Queue()
         self.fortresses: list[Fortress]
@@ -190,9 +182,7 @@ class App:
         if len(self.bullets) > 0:
             logger.debug("Reset list of bullets")
             [self.tasks_main.put(bullet.destroy) for bullet in self.bullets]
-            rlock.acquire()
-            self.garbage.bullets.update([i for i in range(len(self.bullets))])
-            rlock.release()
+            self.garbage.update(self.bullets)
 
     # MOVEMENTS
     def move_invaders(self, sidestep: numeric = 15, forward_step: numeric = 30) -> None:
@@ -334,8 +324,8 @@ class App:
             None
         """
 
-        for i, bullet in enumerate(self.bullets):
-            if i in self.garbage.bullets:
+        for bullet in self.bullets:
+            if bullet in self.garbage:
                 continue
             if (self.user.xcor() - bullet.xcor()) ** 2 + (
                 self.user.ycor() - bullet.ycor()
@@ -343,24 +333,23 @@ class App:
                 self.user.radius + bullet.radius
             ) ** 2 and self.user.heading() != bullet.heading():
                 logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
-                self.garbage.bullets.add(i)
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
                 self.tasks.put(self.mark_all_bullets_for_removal)
-            for k, fortress in enumerate(self.fortresses):
+            for fortress in self.fortresses:
                 if (fortress.xcor() - bullet.xcor()) ** 2 + (
                     fortress.ycor() - bullet.ycor()
                 ) ** 2 <= (fortress.radius + bullet.radius) ** 2:
                     logger.debug(
                         "Bullet hit fortress (%s, %s)", bullet.xcor(), bullet.ycor()
                     )
-                    self.tasks.put(fortress.hit)
                     self.tasks_main.put(fortress.change_color)
                     self.tasks_main.put(bullet.destroy)
-                    self.garbage.bullets.add(i)
+                    self.tasks.put(fortress.hit)
+                    self.garbage.add(bullet)
                     if fortress.lifes <= 0:
                         self.tasks_main.put(fortress.destroy)
-                        self.garbage.fortresses.add(k)
+                        self.garbage.add(fortress)
             for col, rows in enumerate(self.invaders):
                 for row, invader in enumerate(rows):
                     if (
@@ -375,27 +364,27 @@ class App:
                         )
                         self.tasks_main.put(invader.destroy)
                         self.tasks_main.put(bullet.destroy)
-                        self.garbage.bullets.add(i)
-                        self.tasks.put((lambda: self.game_score.increase(1)))
                         self.tasks_main.put(self.game_score.update)
-                        self.garbage.invaders.add((col, row))
+                        self.tasks.put((lambda: self.game_score.increase(1)))
+                        self.garbage.add(bullet)
+                        self.garbage.add(invader)
             if bullets_destroy_bullets:
-                for n, other in enumerate(self.bullets):
-                    if (other.xcor() - bullet.xcor()) ** 2 + (
-                        other.ycor() - bullet.ycor()
+                for other_bullet in self.bullets:
+                    if (other_bullet.xcor() - bullet.xcor()) ** 2 + (
+                        other_bullet.ycor() - bullet.ycor()
                     ) ** 2 <= (
-                        other.radius + bullet.radius
-                    ) ** 2 and other.heading() != bullet.heading():
+                        other_bullet.radius + bullet.radius
+                    ) ** 2 and other_bullet.heading() != bullet.heading():
                         logger.debug(
                             "Bullet hit bullet (%s, %s)", bullet.xcor(), bullet.ycor()
                         )
-                        self.tasks_main.put(other.destroy)
+                        self.tasks_main.put(other_bullet.destroy)
                         self.tasks_main.put(bullet.destroy)
-                        self.garbage.bullets.add(i)
-                        self.garbage.bullets.add(n)
+                        self.garbage.add(bullet)
+                        self.garbage.add(other_bullet)
             if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
-                self.garbage.bullets.add(i)
                 self.tasks_main.put(bullet.destroy)
+                self.garbage.add(bullet)
 
     def check_lifes_left(
         self,
@@ -487,9 +476,8 @@ class App:
 
         GameOverLabel()
 
-    def remove_marked_objects(self) -> None:
-        """Remove marked objecsts from screen.
-        This is done by forgetting links to objects that are marked for removal.
+    def collect_garbage(self) -> None:
+        """Remove objects from screen which are marked as garbage.
 
         Implementd objects are: fortresses, bullets, invaders.
         Method is thread safe.
@@ -499,29 +487,24 @@ class App:
         Return: return_description
             None
         """
-
-        for item in ("fortresses", "bullets", "invaders"):
-            if item in ("invaders",):
-                lst = [
-                    [
-                        item
-                        for row, item in enumerate(rows)
-                        if (column, row) not in self.garbage.invaders
-                    ]
-                    for column, rows in enumerate(self.invaders)
-                ]
+        for item_to_remove in self.garbage:
+            if isinstance(item_to_remove, Invader):
+                for col in self.invaders:
+                    if item_to_remove in col:
+                        rlock.acquire()
+                        col[col.index(item_to_remove)] = None
+                        rlock.release()
             else:
-                lst = [
-                    obj
-                    for i, obj in enumerate(getattr(self, item))
-                    if i not in getattr(self.garbage, item)
-                ]
-            rlock.acquire()
-            setattr(self, item, lst)
-            rlock.release()
-            rlock.acquire()
-            getattr(self.garbage, item).clear()
-            rlock.release()
+                types_ = ("bullets", "fortresses")
+                for type_ in types_:
+                    if item_to_remove in getattr(self, type_):
+                        rlock.acquire()
+                        getattr(self, type_).remove(item_to_remove)
+                        rlock.release()
+
+        rlock.acquire()
+        self.garbage.clear()
+        rlock.release()
 
     def stop(self) -> None:
         """Stop all threads and quit application.
@@ -593,7 +576,7 @@ class App:
             self.move_bullets()
             self.handle_bullets_collisions()
             self.handle_level_up()
-            self.tasks.put(self.remove_marked_objects)
+            self.tasks.put(self.collect_garbage)
             perform_task_from(self.tasks_main)
             if self.check_invaders_pass() or not self.check_lifes_left():
                 self.show_game_over_label()
