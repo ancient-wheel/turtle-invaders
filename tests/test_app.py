@@ -1,13 +1,6 @@
 import pytest
 from typing import Protocol
-from turtle_invaders.app import (
-    App,
-)
-from turtle_invaders.spaceships import Invader
-
-
-class BulletProtocol(Protocol):
-    def destroy(self) -> None: ...
+from tests.conftest import Bullet, Invader, App
 
 
 def test_initialize_invaders(app_fixture: App) -> None:
@@ -25,8 +18,8 @@ def test_initialize_fortressesV2(app_fixture: App) -> None:
     assert len(app_fixture.fortresses) == 4 * 2
 
 
-def test_remove_bullests(app_fixture: App) -> None:
-    app_fixture.bullets.append(BulletProtocol)
+def test_remove_bullests(app_fixture: App, bullet_fixture: Bullet) -> None:
+    app_fixture.bullets.append(bullet_fixture)
     app_fixture.remove_bullets()
     assert app_fixture.tasks_main.qsize() == 1
     assert 0 in app_fixture.to_remove.bullets
