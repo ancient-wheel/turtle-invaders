@@ -1,5 +1,4 @@
 import pytest
-from typing import Protocol
 from tests.conftest import Bullet, Invader, App
 
 
@@ -18,11 +17,11 @@ def test_initialize_fortressesV2(app_fixture: App) -> None:
     assert len(app_fixture.fortresses) == 4 * 2
 
 
-def test_remove_bullests(app_fixture: App, bullet_fixture: Bullet) -> None:
+def test_mark_all_bullets_for_removal(app_fixture: App, bullet_fixture: Bullet) -> None:
     app_fixture.bullets.append(bullet_fixture)
-    app_fixture.remove_bullets()
+    app_fixture.mark_all_bullets_for_removal()
     assert app_fixture.tasks_main.qsize() == 1
-    assert 0 in app_fixture.to_remove.bullets
+    assert bullet_fixture in app_fixture.garbage and len(app_fixture.garbage) == 1
 
 
 @pytest.mark.parametrize("lifes, expected", ((4, True), (0, False)))
@@ -64,3 +63,29 @@ def test_reduce_cooldown(app_fixture: App) -> None:
 def test_stop(app_fixture: App) -> None:
     app_fixture.stop()
     assert app_fixture.run is False
+
+
+def test_handle_level_up_permission_false(app_fixture: App) -> None:
+    game_level = app_fixture.game_level.value
+    app_fixture.handle_level_up()
+    assert app_fixture.game_level.value == game_level
+
+
+def test_handle_level_up_permission_true(app_fixture: App) -> None:
+    app_fixture.game_level_up = True
+    app_fixture.handle_level_up()
+    assert not app_fixture.game_level_up
+
+
+def test_collect_garbage(
+    app_fixture: App, bullet_fixture: Bullet, invader_fixture: Invader, fortress_fixture
+) -> None:
+    app_fixture.bullets.append(bullet_fixture)
+    app_fixture.invaders = [[invader_fixture]]
+    app_fixture.fortresses = [fortress_fixture]
+    app_fixture.garbage.update({bullet_fixture, invader_fixture, fortress_fixture})
+    app_fixture.collect_garbage()
+    assert bullet_fixture not in app_fixture.bullets
+    assert invader_fixture not in app_fixture.invaders[0]
+    assert fortress_fixture not in app_fixture.fortresses
+    assert len(app_fixture.garbage) == 0
