@@ -36,7 +36,7 @@ rlock = threading.RLock()
 
 
 @dataclass
-class ItemsToRemove:
+class Garbage:
     bullets: set[int] = field(default_factory=set)
     invaders: set[tuple[int, int]] = field(default_factory=set)
     fortresses: set[int] = field(default_factory=set)
@@ -62,7 +62,7 @@ class App:
         self.invaders_movement_direction = InvadersMovementDirection.RIGHT
         self.initialize_invaders()
         self.bullets = []
-        self.to_remove = ItemsToRemove()
+        self.garbage = Garbage()
         self.tasks = Queue()
         self.tasks_main = Queue()
         self.fortresses: list[Fortress]
@@ -191,7 +191,7 @@ class App:
             logger.debug("Reset list of bullets")
             [self.tasks_main.put(bullet.destroy) for bullet in self.bullets]
             rlock.acquire()
-            self.to_remove.bullets.update([i for i in range(len(self.bullets))])
+            self.garbage.bullets.update([i for i in range(len(self.bullets))])
             rlock.release()
 
     # MOVEMENTS
@@ -335,7 +335,7 @@ class App:
         """
 
         for i, bullet in enumerate(self.bullets):
-            if i in self.to_remove.bullets:
+            if i in self.garbage.bullets:
                 continue
             if (self.user.xcor() - bullet.xcor()) ** 2 + (
                 self.user.ycor() - bullet.ycor()
@@ -343,7 +343,7 @@ class App:
                 self.user.radius + bullet.radius
             ) ** 2 and self.user.heading() != bullet.heading():
                 logger.debug("Bullet hit user (%s, %s)", bullet.xcor(), bullet.ycor())
-                self.to_remove.bullets.add(i)
+                self.garbage.bullets.add(i)
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
                 self.tasks.put(self.mark_all_bullets_for_removal)
@@ -357,10 +357,10 @@ class App:
                     self.tasks.put(fortress.hit)
                     self.tasks_main.put(fortress.change_color)
                     self.tasks_main.put(bullet.destroy)
-                    self.to_remove.bullets.add(i)
+                    self.garbage.bullets.add(i)
                     if fortress.lifes <= 0:
                         self.tasks_main.put(fortress.destroy)
-                        self.to_remove.fortresses.add(k)
+                        self.garbage.fortresses.add(k)
             for col, rows in enumerate(self.invaders):
                 for row, invader in enumerate(rows):
                     if (
@@ -375,10 +375,10 @@ class App:
                         )
                         self.tasks_main.put(invader.destroy)
                         self.tasks_main.put(bullet.destroy)
-                        self.to_remove.bullets.add(i)
+                        self.garbage.bullets.add(i)
                         self.tasks.put((lambda: self.game_score.increase(1)))
                         self.tasks_main.put(self.game_score.update)
-                        self.to_remove.invaders.add((col, row))
+                        self.garbage.invaders.add((col, row))
             if bullets_destroy_bullets:
                 for n, other in enumerate(self.bullets):
                     if (other.xcor() - bullet.xcor()) ** 2 + (
@@ -391,10 +391,10 @@ class App:
                         )
                         self.tasks_main.put(other.destroy)
                         self.tasks_main.put(bullet.destroy)
-                        self.to_remove.bullets.add(i)
-                        self.to_remove.bullets.add(n)
+                        self.garbage.bullets.add(i)
+                        self.garbage.bullets.add(n)
             if bullet.ycor() < -Screen.HEIGHT / 2 or bullet.ycor() > Screen.HEIGHT / 2:
-                self.to_remove.bullets.add(i)
+                self.garbage.bullets.add(i)
                 self.tasks_main.put(bullet.destroy)
 
     def check_lifes_left(
@@ -489,7 +489,8 @@ class App:
 
     def remove_marked_objects(self) -> None:
         """Remove marked objecsts from screen.
-        
+        This is done by forgetting links to objects that are marked for removal.
+
         Implementd objects are: fortresses, bullets, invaders.
         Method is thread safe.
 
@@ -505,7 +506,7 @@ class App:
                     [
                         item
                         for row, item in enumerate(rows)
-                        if (column, row) not in self.to_remove.invaders
+                        if (column, row) not in self.garbage.invaders
                     ]
                     for column, rows in enumerate(self.invaders)
                 ]
@@ -513,13 +514,13 @@ class App:
                 lst = [
                     obj
                     for i, obj in enumerate(getattr(self, item))
-                    if i not in getattr(self.to_remove, item)
+                    if i not in getattr(self.garbage, item)
                 ]
             rlock.acquire()
             setattr(self, item, lst)
             rlock.release()
             rlock.acquire()
-            getattr(self.to_remove, item).clear()
+            getattr(self.garbage, item).clear()
             rlock.release()
 
     def stop(self) -> None:
