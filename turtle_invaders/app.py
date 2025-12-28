@@ -350,8 +350,8 @@ class App:
                     if fortress.lifes <= 0:
                         self.tasks_main.put(fortress.destroy)
                         self.garbage.add(fortress)
-            for col, rows in enumerate(self.invaders):
-                for row, invader in enumerate(rows):
+            for col in self.invaders:
+                for invader in col:
                     if (
                         invader is not None
                         and (invader.xcor() - bullet.xcor()) ** 2
