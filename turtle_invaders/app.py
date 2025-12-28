@@ -176,8 +176,9 @@ class App:
             self.fortresses.append(Fortress(x - Fortress.radius, y))
             self.fortresses.append(Fortress(x + Fortress.radius, y))
 
-    def remove_bullets(self) -> None:
+    def mark_all_bullets_for_removal(self) -> None:
         """Remove all bullets on the screen.
+        Destroy all bullets and mark them for removal.
         Method is thread safe.
 
         Keyword arguments:
@@ -345,8 +346,8 @@ class App:
                 self.to_remove.bullets.add(i)
                 self.tasks_main.put(self.game_lifes.reduce_)
                 self.tasks_main.put(self.game_lifes.update)
-                self.tasks.put(self.remove_bullets)
-            for fortress in self.fortresses:
+                self.tasks.put(self.mark_all_bullets_for_removal)
+            for k, fortress in enumerate(self.fortresses):
                 if (fortress.xcor() - bullet.xcor()) ** 2 + (
                     fortress.ycor() - bullet.ycor()
                 ) ** 2 <= (fortress.radius + bullet.radius) ** 2:
@@ -357,6 +358,9 @@ class App:
                     self.tasks_main.put(fortress.change_color)
                     self.tasks_main.put(bullet.destroy)
                     self.to_remove.bullets.add(i)
+                    if fortress.lifes <= 0:
+                        self.tasks_main.put(fortress.destroy)
+                        self.to_remove.fortresses.add(k)
             for col, rows in enumerate(self.invaders):
                 for row, invader in enumerate(rows):
                     if (
@@ -465,7 +469,7 @@ class App:
         if self.game_level_up:
             self.game_level_up = False
             logger.debug("Updating level")
-            self.tasks.put(self.remove_bullets)
+            self.tasks.put(self.mark_all_bullets_for_removal)
             self.tasks.put((lambda: self.game_level.increase(1)))
             self.tasks_main.put(self.game_level.update)
             self.tasks_main.put(self.initialize_invaders)
@@ -483,8 +487,11 @@ class App:
 
         GameOverLabel()
 
-    def remove_destroyed_objects(self) -> None:
+    def remove_marked_objects(self) -> None:
         """Remove marked objecsts from screen.
+        
+        Implementd objects are: fortresses, bullets, invaders.
+        Method is thread safe.
 
         Keyword arguments:
         argument -- description
@@ -584,8 +591,8 @@ class App:
             self.move_invaders()
             self.move_bullets()
             self.handle_bullets_collisions()
-            self.tasks.put(self.remove_destroyed_objects)
             self.handle_level_up()
+            self.tasks.put(self.remove_marked_objects)
             perform_task_from(self.tasks_main)
             if self.check_invaders_pass() or not self.check_lifes_left():
                 self.show_game_over_label()
