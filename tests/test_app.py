@@ -1,18 +1,13 @@
-from typing import Protocol
 import pytest
+from typing import Protocol
 from turtle_invaders.app import (
     App,
 )
-from tests.test_spaceships import invader_fixture, Invader
+from turtle_invaders.spaceships import Invader
 
 
 class BulletProtocol(Protocol):
     def destroy(self) -> None: ...
-
-
-@pytest.fixture
-def app_fixture() -> App:
-    return App()
 
 
 def test_initialize_invaders(app_fixture: App) -> None:
@@ -21,7 +16,7 @@ def test_initialize_invaders(app_fixture: App) -> None:
 
 
 def test_initialize_fortresses(app_fixture: App) -> None:
-    app_fixture.initialize_fortresses(300)
+    app_fixture.initialize_fortresses(300, amount=4)
     assert len(app_fixture.fortresses) == 4
 
 
@@ -49,3 +44,30 @@ def test_check_invaders_pass(
 ) -> None:
     app_fixture.invaders = [[invader_fixture]]
     assert app_fixture.check_invaders_pass(y_cor) is expected
+
+
+def test_reduce_cooldown(app_fixture: App) -> None:
+    cooldown_bullet_movement_start = app_fixture.cooldown_bullet_movement
+    cooldown_invaders_movement_start = app_fixture.cooldown_invaders_movement
+    cooldown_user_shoot_start = app_fixture.cooldown_user_shoot
+    app_fixture.reduce_cooldown(
+        bullet_movement=0.001,
+        inverders_movement=-0.03,
+        user_shoot=0.009,
+    )
+    assert (
+        cooldown_bullet_movement_start - app_fixture.cooldown_bullet_movement
+        == pytest.approx(0.001)
+    )
+    assert (
+        cooldown_invaders_movement_start - app_fixture.cooldown_invaders_movement
+        == pytest.approx(0.03)
+    )
+    assert cooldown_user_shoot_start - app_fixture.cooldown_user_shoot == pytest.approx(
+        0.009
+    )
+
+
+def test_stop(app_fixture: App) -> None:
+    app_fixture.stop()
+    assert app_fixture.run is False

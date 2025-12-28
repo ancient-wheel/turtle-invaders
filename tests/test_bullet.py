@@ -1,11 +1,5 @@
 import pytest
 from turtle_invaders.bullet import Bullet
-from turtle_invaders.constants import ObjectDirection
-
-
-@pytest.fixture
-def bullet_fixture() -> Bullet:
-    return Bullet(0, 0, ObjectDirection.NORTH, "white")
 
 
 def test_move(bullet_fixture: Bullet) -> None:

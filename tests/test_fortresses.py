@@ -24,12 +24,7 @@ def test_parametrized_valid_fortness(x: numeric, y: numeric) -> None:
 @pytest.mark.parametrize("x, y", INVALID_PARAMETERS)
 def test_fortress_str_2(x: numeric, y: numeric) -> None:
     with pytest.raises(TypeError):
-        dut = Fortress(x, y)
-
-
-@pytest.fixture
-def fortress_fixture() -> Fortress:
-    return Fortress(0, 0)
+        dut = Fortress(x, y)  # type: ignore
 
 
 def test_hit(fortress_fixture: Fortress) -> None:
@@ -46,4 +41,4 @@ def test_change_color(fortress_fixture: Fortress) -> None:
 
 def test_destroy(fortress_fixture: Fortress) -> None:
     fortress_fixture.destroy()
-    assert fortress_fixture.isvisible() == False
+    assert not fortress_fixture.isvisible()
