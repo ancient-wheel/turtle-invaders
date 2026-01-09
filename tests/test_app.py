@@ -28,7 +28,19 @@ def test_mark_all_bullets_for_removal(app_fixture: App, bullet_fixture: Bullet) 
 
 # test_move_invaders
 
-# test_move_bullets
+
+def test_move_bullets(app_fixture: App, bullet_fixture: Bullet) -> None: 
+    app_fixture.bullets = [bullet_fixture]
+    app_fixture.cooldown_bullet_last_move = perf_counter() - 30
+    app_fixture.move_bullets()
+    assert bullet_fixture.ycor() == 1
+
+
+def test_move_bullets_cooldown(app_fixture: App, bullet_fixture: Bullet) -> None:
+    app_fixture.bullets = [bullet_fixture]
+    app_fixture.cooldown_bullet_last_move = perf_counter() + 30
+    app_fixture.move_bullets()
+    assert bullet_fixture.ycor() == 0
 
 
 def test_handle_invaders_shooting(app_fixture: App) -> None:
