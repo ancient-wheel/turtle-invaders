@@ -112,10 +112,8 @@ def test_handle_level_up_permission_true(app_fixture: App) -> None:
     assert not app_fixture.game_level_up
 
 
-# test_handle_level_up
-
-
 # test_show_game_over_label
+# unit test no needed
 
 
 def test_collect_garbage(
@@ -137,10 +135,13 @@ def test_stop(app_fixture: App) -> None:
 
 
 # test_start
+# unit test no needed
 
 # test_run_additional_loop
+# unit test no needed
 
 # test_run_mainloop
+# unit test no needed
 
 
 # test_load_high_score
@@ -165,3 +166,4 @@ def test_load_high_score_empty_dict(monkeypatch: MonkeyPatch, app_fixture: App) 
 # test_show_count_down
 
 # test_save_high_score
+# not needed, because testded in test_utils.py
