@@ -1,4 +1,5 @@
 import pytest
+from pytest import MonkeyPatch
 from tests.conftest import Bullet, Invader, App
 from time import perf_counter
 
@@ -23,6 +24,43 @@ def test_mark_all_bullets_for_removal(app_fixture: App, bullet_fixture: Bullet) 
     app_fixture.mark_all_bullets_for_removal()
     assert app_fixture.tasks_main.qsize() == 1
     assert bullet_fixture in app_fixture.garbage and len(app_fixture.garbage) == 1
+
+
+# test_move_invaders
+
+# test_move_bullets
+
+
+def test_handle_invaders_shooting(app_fixture: App) -> None:
+    app_fixture.cooldown_invaders_last_shoot = (
+        perf_counter() - app_fixture.cooldown_invaders_shoot
+    )
+    app_fixture.handle_invaders_shooting()
+    assert len(app_fixture.bullets) == 1
+
+
+def test_handle_invaders_shooting_on_cooldown(app_fixture: App) -> None:
+    app_fixture.cooldown_invaders_last_shoot = (
+        perf_counter() + app_fixture.cooldown_invaders_shoot * 1.2
+    )
+    app_fixture.handle_invaders_shooting()
+    assert len(app_fixture.bullets) == 0
+
+
+def test_handle_user_shooting(app_fixture: App) -> None:
+    app_fixture.handle_user_shooting()
+    assert len(app_fixture.bullets) == 1
+
+
+def test_handle_user_shooting_on_cooldown(app_fixture: App) -> None:
+    app_fixture.cooldown_user_last_shoot = (
+        perf_counter() + app_fixture.cooldown_user_shoot * 1.2
+    )
+    app_fixture.handle_user_shooting()
+    assert len(app_fixture.bullets) == 0
+
+
+# test_handle_bullets_collisions
 
 
 @pytest.mark.parametrize("lifes, expected", ((4, True), (0, False)))
@@ -59,11 +97,7 @@ def test_reduce_cooldown(app_fixture: App) -> None:
     assert cooldown_user_shoot_start - app_fixture.cooldown_user_shoot == pytest.approx(
         0.009
     )
-
-
-def test_stop(app_fixture: App) -> None:
-    app_fixture.stop()
-    assert app_fixture.run is False
+    assert len(app_fixture.garbage) == 0
 
 
 def test_handle_level_up_permission_false(app_fixture: App) -> None:
@@ -78,6 +112,12 @@ def test_handle_level_up_permission_true(app_fixture: App) -> None:
     assert not app_fixture.game_level_up
 
 
+# test_handle_level_up
+
+
+# test_show_game_over_label
+
+
 def test_collect_garbage(
     app_fixture: App, bullet_fixture: Bullet, invader_fixture: Invader, fortress_fixture
 ) -> None:
@@ -89,15 +129,39 @@ def test_collect_garbage(
     assert bullet_fixture not in app_fixture.bullets
     assert invader_fixture not in app_fixture.invaders[0]
     assert fortress_fixture not in app_fixture.fortresses
-    assert len(app_fixture.garbage) == 0
 
 
-def test_handle_user_shooting(app_fixture: App) -> None:
-    app_fixture.handle_user_shooting()
-    assert len(app_fixture.bullets) == 1
+def test_stop(app_fixture: App) -> None:
+    app_fixture.stop()
+    assert app_fixture.run is False
 
 
-def test_handle_user_shooting_on_cooldown(app_fixture: App) -> None:
-    app_fixture.cooldown_user_last_shoot = perf_counter() + 10
-    app_fixture.handle_user_shooting()
-    assert len(app_fixture.bullets) == 0
+# test_start
+
+# test_run_additional_loop
+
+# test_run_mainloop
+
+
+# test_load_high_score
+def test_load_high_score(monkeypatch: MonkeyPatch, app_fixture: App) -> None:
+    def read_json_mock(*args) -> dict:
+        return {"result_1": 100, "result_2": 1000}
+
+    monkeypatch.setattr("turtle_invaders.app.read_json", read_json_mock)
+    app_fixture.load_high_score()
+    assert app_fixture.game_high_score.value == 1000
+
+
+def test_load_high_score_empty_dict(monkeypatch: MonkeyPatch, app_fixture: App) -> None:
+    def read_json_mock(*args) -> dict:
+        return {}
+
+    monkeypatch.setattr("turtle_invaders.app.read_json", read_json_mock)
+    app_fixture.load_high_score()
+    assert app_fixture.game_high_score.value == 0
+
+
+# test_show_count_down
+
+# test_save_high_score
